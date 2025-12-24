@@ -6,5 +6,10 @@
       "command": ["npx", "-y", "@chakra-ui/react-mcp"],
       "enabled": true,
     },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "@playwright/mcp@latest"],
+      "enabled": true,
+    },
   },
 }
