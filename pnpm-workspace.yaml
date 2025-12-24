@@ -9,8 +9,11 @@ catalog:
   '@types/react-dom': ^19.2.3
   typescript: ^5.9.3
   zod: ^4.2.1
+  vite: ^7.1.7
   vitest: ^4.0.16
   '@vitest/coverage-v8': ^4.0.16
+  '@vitest/browser-playwright': ^4.0.16
   '@testing-library/react': ^16.3.1
   '@testing-library/jest-dom': ^6.9.1
   '@testing-library/user-event': ^14.6.1
+  eslint: ^9.39.2

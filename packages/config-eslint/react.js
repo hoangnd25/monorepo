@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import storybook from 'eslint-plugin-storybook';
 
 /**
  * ESLint configuration for React projects
@@ -10,6 +11,7 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks';
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  storybook.configs['flat/recommended'],
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     plugins: {
