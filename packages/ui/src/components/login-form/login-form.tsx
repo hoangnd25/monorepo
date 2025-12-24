@@ -67,7 +67,7 @@ export function LoginForm({
   showSignUpLink = true,
   logo,
 }: LoginFormProps) {
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
@@ -76,7 +76,15 @@ export function LoginForm({
   };
 
   return (
-    <Box as="form" onSubmit={handleSubmit} width="full" maxWidth="sm" mx="auto">
+    <Box
+      as="form"
+      onSubmit={
+        handleSubmit as unknown as React.FormEventHandler<HTMLDivElement>
+      }
+      width="full"
+      maxWidth="sm"
+      mx="auto"
+    >
       <VStack gap={8} align="stretch">
         {logo && (
           <Box textAlign="center" mb={2}>
