@@ -171,12 +171,18 @@ importers:
       aws-cdk-lib:
         specifier: 2.201.0
         version: 2.201.0(constructs@10.4.4)
+      config-eslint:
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
       config-tsconfig:
         specifier: workspace:*
         version: link:../../packages/config-tsconfig
       constructs:
         specifier: ^10.3.0
         version: 10.4.4
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
       sst:
         specifier: ^2.49.6
         version: 2.49.6(@aws-cdk/cli-plugin-contract@2.182.0)(@aws-sdk/client-sso-oidc@3.699.0(@aws-sdk/client-sts@3.699.0(aws-crt@1.28.1))(aws-crt@1.28.1))(@types/react@19.2.7)(aws-crt@1.28.1)

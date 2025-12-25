@@ -39,7 +39,7 @@
       "outputs": ["coverage/**"]
     },
     "deploy": {
-      "dependsOn": ["build", "^deploy"]
+      "dependsOn": ["^build", "^deploy"]
     }
   }
 }

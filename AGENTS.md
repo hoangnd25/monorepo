@@ -5,6 +5,7 @@
 - **Install**: `pnpm install` (requires Node.js >=22, pnpm >=10.26.2)
 - **Dev**: `pnpm dev` (all services) or `cd services/main-ui && pnpm dev` (single service)
 - **Build**: `pnpm build` (uses Turborepo, builds all packages/services including type check)
+- **Deploy**: `pnpm deploy` (all services) or `cd services/main-api && pnpm deploy` (single service with SST)
 - **Lint**: `pnpm lint` (all) or `cd services/main-ui && pnpm lint` (single package)
 - **Type Check**: `pnpm type-check` (all) or `cd services/main-ui && pnpm type-check` (single)
 - **Format**: `pnpm format` (write), `pnpm format:check` (check only)
