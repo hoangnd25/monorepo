@@ -35,7 +35,6 @@
 
   // ESLint settings
   "eslint.useFlatConfig": true,
-  "eslint.experimental.useFlatConfig": true,
 
   // TypeScript settings
   "typescript.tsdk": "node_modules/typescript/lib",

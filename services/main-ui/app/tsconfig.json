@@ -1,6 +1,6 @@
 {
   "extends": "config-tsconfig/react-app.json",
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "eslint.config.js"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
