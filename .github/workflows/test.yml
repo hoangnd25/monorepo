@@ -5,6 +5,13 @@ on:
   pull_request:
     branches: [main]
 
+# Workflow structure:
+# - lint-and-format: ESLint and Prettier checks
+# - type-check: TypeScript type checking
+# - test: Unit tests for all packages except @lib/ui (using Turbo)
+# - test-ui: UI component tests with Playwright for @lib/ui package (using Turbo)
+# - build: Build all packages
+
 jobs:
   lint-and-format:
     name: Lint & Format Check
@@ -48,7 +55,7 @@ jobs:
         run: pnpm type-check
 
   test:
-    name: Run Tests
+    name: Run Unit Tests (Non-UI)
     runs-on: ubuntu-latest
 
     steps:
@@ -63,8 +70,30 @@ jobs:
       - name: 📥 Monorepo install
         uses: ./.github/actions/pnpm-install
 
-      - name: Run tests
-        run: pnpm test:run
+      - name: Run tests (excluding UI package)
+        run: pnpm turbo run test:run --filter=!@lib/ui
+
+  test-ui:
+    name: Run UI Tests (with Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.tool-versions'
+
+      - name: 📥 Monorepo install
+        uses: ./.github/actions/pnpm-install
+
+      - name: Install Playwright browsers
+        run: pnpm --filter=@lib/ui exec playwright install --with-deps chromium
+
+      - name: Run UI tests
+        run: pnpm turbo run test:run --filter=@lib/ui
 
   build:
     name: Build
