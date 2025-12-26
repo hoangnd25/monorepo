@@ -172,7 +172,7 @@ importers:
         version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@22.19.3)(jiti@2.6.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
       aws-cdk-lib:
         specifier: 2.233.0
-        version: 2.233.0(constructs@10.3.0)
+        version: 2.233.0(constructs@10.4.4)
       eslint:
         specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
@@ -322,6 +322,40 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  services/infra-aws-account:
+    dependencies:
+      '@lib/sst-helpers':
+        specifier: workspace:*
+        version: link:../../packages/sst-helpers
+      aws-cdk-lib:
+        specifier: 2.233.0
+        version: 2.233.0(constructs@10.3.0)
+      constructs:
+        specifier: 'catalog:'
+        version: 10.3.0
+    devDependencies:
+      '@config/eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@config/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/config-tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.3
+      aws-cdk:
+        specifier: ^2.1100.1
+        version: 2.1100.1
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -3665,6 +3699,11 @@ packages:
       - yaml
       - mime-types
 
+  aws-cdk@2.1100.1:
+    resolution: {integrity: sha512-q2poFrQh90TK6eqeI0zznA8r1JkDI63WVOSqC7gFGo6qjQjAnvFk/utxHoNRgAC0RL0CLd19uCcHh3jfX9NiSg==}
+    engines: {node: '>= 18.0.0'}
+    hasBin: true
+
   aws-crt@1.28.1:
     resolution: {integrity: sha512-3cu6kLKYlJbCeYUWsuFpbEFWLt5pIoRYqcpRC9YU5QcUh2nKCKFOn9vi1eyOSC55Sp6xOMgLNhwaN1CIMH8rLg==}
 
@@ -3950,6 +3989,9 @@ packages:
   constructs@10.3.0:
     resolution: {integrity: sha512-vbK8i3rIb/xwZxSpTjz3SagHn1qq9BChLEfy5Hf6fB3/2eFbrwt2n9kHwQcS0CPTRBesreeAcsJfMq2229FnbQ==}
     engines: {node: '>= 16.14.0'}
+
+  constructs@10.4.4:
+    resolution: {integrity: sha512-lP0qC1oViYf1cutHo9/KQ8QL637f/W29tDmv/6sy35F5zs+MD9f66nbAAIjicwc7fwyuF3rkg6PhZh4sfvWIpA==}
 
   content-disposition@0.5.4:
     resolution: {integrity: sha512-FveZTNuGw04cxlAiWbzi6zTAL/lhehaWbTtgluJh4/E95DqMwTmha3KZN1aAWA8cFIhHzMZUvLevkw5Rqk+tSQ==}
@@ -12354,6 +12396,17 @@ snapshots:
       '@aws-cdk/cloud-assembly-schema': 48.20.0
       constructs: 10.3.0
 
+  aws-cdk-lib@2.233.0(constructs@10.4.4):
+    dependencies:
+      '@aws-cdk/asset-awscli-v1': 2.2.242
+      '@aws-cdk/asset-node-proxy-agent-v6': 2.1.0
+      '@aws-cdk/cloud-assembly-schema': 48.20.0
+      constructs: 10.4.4
+
+  aws-cdk@2.1100.1:
+    optionalDependencies:
+      fsevents: 2.3.2
+
   aws-crt@1.28.1:
     dependencies:
       '@aws-sdk/util-utf8-browser': 3.259.0
@@ -12723,6 +12776,8 @@ snapshots:
   consola@3.4.2: {}
 
   constructs@10.3.0: {}
+
+  constructs@10.4.4: {}
 
   content-disposition@0.5.4:
     dependencies:

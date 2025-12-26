@@ -40,6 +40,9 @@
     },
     "deploy": {
       "dependsOn": ["^build", "^deploy"]
+    },
+    "deploy-account-infra": {
+      "dependsOn": ["^build"]
     }
   }
 }
