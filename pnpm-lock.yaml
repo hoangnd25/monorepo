@@ -48,6 +48,9 @@ catalogs:
     react-dom:
       specifier: ^19.2.3
       version: 19.2.3
+    react-icons:
+      specifier: ^5.5.0
+      version: 5.5.0
     sst:
       specifier: 2.49.6
       version: 2.49.6
@@ -159,7 +162,7 @@ importers:
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.2.7)(react@19.2.3)
       react-icons:
-        specifier: ^5.5.0
+        specifier: 'catalog:'
         version: 5.5.0(react@19.2.3)
     devDependencies:
       '@config/eslint':
@@ -412,6 +415,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.3(react@19.2.3)
+      react-icons:
+        specifier: 'catalog:'
+        version: 5.5.0(react@19.2.3)
       zod:
         specifier: 'catalog:'
         version: 4.2.1

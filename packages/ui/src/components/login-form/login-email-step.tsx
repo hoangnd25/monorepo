@@ -29,7 +29,7 @@ export function LoginEmailStep({
   socialProviders,
   showSignUpLink = true,
   signUpText = "Don't have an account?",
-  signUpLinkText = 'Sign up',
+  signUpLinkText = 'Create account',
   onSignUp,
 }: LoginEmailStepProps) {
   return (

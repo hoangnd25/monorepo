@@ -35,13 +35,13 @@ export interface LoginPasswordStepProps {
 
 export function LoginPasswordStep({
   email,
-  emailLabel = 'Email',
+  emailLabel = 'Email address',
   passwordLabel = 'Password',
   passwordError,
   submitButtonText = 'Sign in',
-  magicLinkButtonText = 'Email me a login link',
-  rememberMeLabel = 'Remember me',
-  forgotPasswordText = 'Forgot password',
+  magicLinkButtonText = 'Send me a login link',
+  rememberMeLabel = 'Keep me signed in',
+  forgotPasswordText = 'Forgot password?',
   showRememberMe = true,
   showForgotPassword = true,
   availableMethods = ['password'],

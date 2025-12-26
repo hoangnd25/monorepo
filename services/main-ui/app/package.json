@@ -21,7 +21,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "@lib/ui": "workspace:*",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "react-icons": "catalog:"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",

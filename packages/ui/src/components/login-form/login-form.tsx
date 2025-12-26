@@ -52,17 +52,17 @@ export function LoginForm({
   onEmailVerified,
   socialProviders,
   title = 'Welcome back',
-  subtitle = 'Start using Chakra in your projects',
+  subtitle = 'Sign in to your account to continue',
   emailLabel = 'Email',
   emailPlaceholder = 'you@example.com',
   passwordLabel = 'Password',
   submitButtonText = 'Sign in',
   continueButtonText = 'Continue',
-  rememberMeLabel = 'Remember me',
-  forgotPasswordText = 'Forgot password',
+  rememberMeLabel = 'Keep me signed in',
+  forgotPasswordText = 'Forgot password?',
   signUpText = "Don't have an account?",
-  signUpLinkText = 'Sign up',
-  magicLinkButtonText = 'Email me a login link',
+  signUpLinkText = 'Create account',
+  magicLinkButtonText = 'Send me a login link',
   isLoading = false,
   passwordError,
   showTitle = true,
@@ -90,7 +90,7 @@ export function LoginForm({
 
   const defaultValidateEmail = (email: string): string | undefined => {
     if (!email || email.trim() === '') {
-      return 'Email address is required';
+      return 'Please enter your email address';
     }
     if (!/\S+@\S+\.\S+/.test(email)) {
       return 'Please enter a valid email address';
@@ -128,14 +128,18 @@ export function LoginForm({
         }
         // Check if methods array is empty
         if (!response.methods || response.methods.length === 0) {
-          setCurrentEmailError('No login methods available for this account');
+          setCurrentEmailError(
+            'This email is not registered. Please sign up first.'
+          );
           setIsVerifyingEmail(false);
           return;
         }
         setAvailableMethods(response.methods);
         setIsVerifyingEmail(false);
       } catch {
-        setCurrentEmailError('Unable to verify email. Please try again later.');
+        setCurrentEmailError(
+          'We could not verify your email. Please try again.'
+        );
         setIsVerifyingEmail(false);
         return;
       }
@@ -151,7 +155,7 @@ export function LoginForm({
 
     // Validate password is not empty
     if (!password || password.trim() === '') {
-      setCurrentPasswordError('Password is required');
+      setCurrentPasswordError('Please enter your password');
       return;
     }
 
@@ -175,12 +179,6 @@ export function LoginForm({
           handleEmailSubmit as unknown as React.FormEventHandler<HTMLDivElement>
         }
         width="full"
-        maxWidth="sm"
-        minWidth={{ sm: 'auto', md: '384px' }}
-        mx="auto"
-        my={{ base: 0, md: 'auto' }}
-        px={{ base: 4, md: 0 }}
-        pt={{ base: 8, md: 0 }}
       >
         <VStack gap={8} align="stretch">
           <LoginHeader
@@ -217,11 +215,6 @@ export function LoginForm({
         handlePasswordSubmit as unknown as React.FormEventHandler<HTMLDivElement>
       }
       width="full"
-      maxWidth="sm"
-      minWidth={{ base: 'auto', md: '384px' }}
-      mx="auto"
-      my={{ base: 0, md: 'auto' }}
-      pt={{ base: 8, md: 0 }}
     >
       <VStack gap={8} align="stretch">
         <LoginHeader
