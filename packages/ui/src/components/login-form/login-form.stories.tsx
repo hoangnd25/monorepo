@@ -18,35 +18,29 @@ const meta = {
     heading: {
       control: 'object',
     },
-    emailLabel: {
-      control: 'text',
+    magicLink: {
+      control: 'object',
     },
-    emailPlaceholder: {
-      control: 'text',
+    signUp: {
+      control: 'object',
     },
-    passwordLabel: {
-      control: 'text',
+    rememberMe: {
+      control: 'object',
     },
-    submitButtonText: {
-      control: 'text',
+    password: {
+      control: 'object',
     },
-    continueButtonText: {
-      control: 'text',
+    username: {
+      control: 'object',
+    },
+    buttons: {
+      control: 'object',
     },
     isLoading: {
       control: 'boolean',
     },
-    showRememberMe: {
-      control: 'boolean',
-    },
-    showForgotPassword: {
-      control: 'boolean',
-    },
     socialProviders: {
       control: false,
-    },
-    showSignUpLink: {
-      control: 'boolean',
     },
   },
 } satisfies Meta<typeof LoginForm>;
@@ -55,20 +49,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {
-    socialProviders: [
-      {
-        id: 'google',
-        label: 'Sign in with Google',
-        icon: <FaGoogle />,
-        onClick: () => alert('Signing in with Google'),
-        show: true,
-      },
-    ],
-  },
+  args: {},
 };
 
-export const WithMultipleProviders: Story = {
+export const WithSocialProviders: Story = {
   args: {
     socialProviders: [
       {
@@ -96,7 +80,7 @@ export const WithMultipleProviders: Story = {
   },
 };
 
-export const WithLogo: Story = {
+export const CustomContent: Story = {
   args: {
     heading: {
       logo: (
@@ -114,19 +98,12 @@ export const WithLogo: Story = {
           Logo
         </Box>
       ),
-      title: 'Welcome back',
-      subtitle: 'Sign in to your account to continue',
-    },
-  },
-};
-
-export const CustomContent: Story = {
-  args: {
-    heading: {
       title: 'Sign In',
       subtitle: 'Access your account',
     },
-    submitButtonText: 'Continue',
+    buttons: {
+      submit: 'Continue',
+    },
   },
 };
 
@@ -139,162 +116,37 @@ export const Loading: Story = {
 export const WithErrors: Story = {
   args: {
     passwordError: 'Password must be at least 8 characters',
-    defaultEmail: 'user@example.com',
+    defaultUsername: 'user@example.com',
   },
 };
 
-export const MinimalWithoutOptionalFeatures: Story = {
-  args: {
-    heading: {
-      title: 'Welcome back',
-    },
-    showRememberMe: false,
-    showForgotPassword: false,
-    showSignUpLink: false,
-  },
-};
-
-export const WithoutTitle: Story = {
+export const MinimalConfiguration: Story = {
   args: {
     heading: {},
+    rememberMe: {
+      enabled: false,
+    },
+    signUp: {
+      enabled: false,
+    },
   },
 };
 
-export const WithoutSignUpLink: Story = {
+export const WithValidation: Story = {
   args: {
-    showSignUpLink: false,
-  },
-};
-
-export const WithEmailValidationError: Story = {
-  args: {
-    onValidateEmail: (email: string) => {
-      if (!email || email.trim() === '') {
+    onValidateUsername: (username: string) => {
+      if (!username || username.trim() === '') {
         return 'Email address is required';
       }
-      if (!/\S+@\S+\.\S+/.test(email)) {
+      if (!/\S+@\S+\.\S+/.test(username)) {
         return 'Please enter a valid email address';
       }
       return undefined;
     },
-  },
-  render: (args) => (
-    <Box>
-      <LoginForm {...args} />
-      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
-        <Box fontSize="sm" color="gray.600">
-          Try submitting with:
-          <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
-            <li>Empty email</li>
-            <li>Invalid format: &quot;notanemail&quot;</li>
-            <li>Valid email: &quot;user@example.com&quot;</li>
-          </ul>
-        </Box>
-      </Box>
-    </Box>
-  ),
-};
-
-export const WithDefaultEmail: Story = {
-  args: {
-    defaultEmail: 'user@example.com',
-  },
-  render: (args) => (
-    <Box>
-      <LoginForm {...args} />
-      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
-        <Box fontSize="sm" color="gray.600">
-          This story demonstrates skipping step 1 by providing a defaultEmail
-          prop. The form starts directly at the password step. Click the edit
-          icon to go back and change the email.
-        </Box>
-      </Box>
-    </Box>
-  ),
-};
-
-export const WithAsyncEmailVerification: Story = {
-  args: {
-    onEmailVerified: async (_email: string) => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Return available login methods
-      return {
-        methods: ['password', 'magic-link'],
-      };
-    },
-    onMagicLinkRequest: (_email: string) => {
-      alert(`Magic link sent to ${_email}`);
-    },
-  },
-  render: (args) => (
-    <Box>
-      <LoginForm {...args} />
-      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
-        <Box fontSize="sm" color="gray.600">
-          This story demonstrates async email verification. After entering an
-          email, the form will verify it (simulated 1.5s delay) and show both
-          password and magic link options.
-        </Box>
-      </Box>
-    </Box>
-  ),
-};
-
-export const WithPasswordOnly: Story = {
-  args: {
-    onEmailVerified: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return {
-        methods: ['password'],
-      };
-    },
-  },
-  render: (args) => (
-    <Box>
-      <LoginForm {...args} />
-      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
-        <Box fontSize="sm" color="gray.600">
-          This story shows password-only authentication after email
-          verification.
-        </Box>
-      </Box>
-    </Box>
-  ),
-};
-
-export const WithMagicLinkOnly: Story = {
-  args: {
-    onEmailVerified: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return {
-        methods: ['magic-link'],
-      };
-    },
-    onMagicLinkRequest: (email: string) => {
-      alert(`Magic link sent to ${email}`);
-    },
-  },
-  render: (args) => (
-    <Box>
-      <LoginForm {...args} />
-      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
-        <Box fontSize="sm" color="gray.600">
-          This story shows magic link only authentication. Perfect for
-          passwordless login flows.
-        </Box>
-      </Box>
-    </Box>
-  ),
-};
-
-export const WithEmailVerificationError: Story = {
-  args: {
-    onEmailVerified: async (email: string) => {
+    onUsernameVerified: async (username: string) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (email === 'blocked@example.com') {
+      if (username === 'blocked@example.com') {
         return {
           methods: [],
           error: 'This account has been blocked',
@@ -311,19 +163,54 @@ export const WithEmailVerificationError: Story = {
       <LoginForm {...args} />
       <Box mt={4} p={4} bg="gray.50" borderRadius="md">
         <Box fontSize="sm" color="gray.600">
-          Try entering &quot;blocked@example.com&quot; to see an error from the
-          email verification callback.
+          Try submitting with:
+          <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
+            <li>Empty email (validation error)</li>
+            <li>Invalid format: &quot;notanemail&quot; (validation error)</li>
+            <li>&quot;blocked@example.com&quot; (verification error)</li>
+            <li>Valid email: &quot;user@example.com&quot; (success)</li>
+          </ul>
         </Box>
       </Box>
     </Box>
   ),
 };
 
-export const WithPasswordValidation: Story = {
+export const WithDefaultUsername: Story = {
   args: {
-    defaultEmail: 'user@example.com',
-    onSubmit: (email: string, password: string) => {
-      alert(`Login successful!\nEmail: ${email}\nPassword: ${password}`);
+    defaultUsername: 'user@example.com',
+  },
+  render: (args) => (
+    <Box>
+      <LoginForm {...args} />
+      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
+        <Box fontSize="sm" color="gray.600">
+          This story demonstrates skipping step 1 by providing a defaultUsername
+          prop. The form starts directly at the password step. Click the edit
+          icon to go back and change the username.
+        </Box>
+      </Box>
+    </Box>
+  ),
+};
+
+export const WithLoginMethods: Story = {
+  args: {
+    magicLink: {
+      enabled: true,
+      buttonText: 'Send me a login link',
+    },
+    onUsernameVerified: async (_username: string) => {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Return available login methods
+      return {
+        methods: ['password', 'magic-link'],
+      };
+    },
+    onMagicLinkRequest: (_username: string) => {
+      alert(`Magic link sent to ${_username}`);
     },
   },
   render: (args) => (
@@ -331,9 +218,69 @@ export const WithPasswordValidation: Story = {
       <LoginForm {...args} />
       <Box mt={4} p={4} bg="gray.50" borderRadius="md">
         <Box fontSize="sm" color="gray.600">
-          This story demonstrates password validation. Try submitting the form
-          without entering a password to see the validation error. The error
-          will clear when you start typing.
+          This story demonstrates async username verification. After entering a
+          username, the form will verify it (simulated 1.5s delay) and show both
+          password and magic link options.
+        </Box>
+      </Box>
+    </Box>
+  ),
+};
+
+export const PasswordlessLogin: Story = {
+  args: {
+    password: {
+      enabled: false,
+    },
+    magicLink: {
+      enabled: true,
+      buttonText: 'Send magic link',
+    },
+    onUsernameVerified: async (username: string) => {
+      console.log('Username verified:', username);
+      return { methods: ['magic-link'] };
+    },
+    onMagicLinkRequest: (username: string) => {
+      alert(`Magic link sent to ${username}!`);
+    },
+  },
+  render: (args) => (
+    <Box>
+      <LoginForm {...args} />
+      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
+        <Box fontSize="sm" color="gray.600">
+          This story demonstrates passwordless login using magic links only. The
+          password field is completely disabled, and users can only authenticate
+          via magic link sent to their email.
+        </Box>
+      </Box>
+    </Box>
+  ),
+};
+
+export const CustomUsernameField: Story = {
+  args: {
+    username: {
+      label: 'Phone number',
+      placeholder: '+1 (555) 000-0000',
+      validate: (value: string) => {
+        if (!value || value.trim() === '') {
+          return 'Please enter your phone number';
+        }
+        return undefined;
+      },
+    },
+    onSubmit: (username: string, password: string) => {
+      alert(`Login successful!\nPhone: ${username}\nPassword: ${password}`);
+    },
+  },
+  render: (args) => (
+    <Box>
+      <LoginForm {...args} />
+      <Box mt={4} p={4} bg="gray.50" borderRadius="md">
+        <Box fontSize="sm" color="gray.600">
+          This story shows phone number as username with custom label,
+          placeholder, and validation.
         </Box>
       </Box>
     </Box>

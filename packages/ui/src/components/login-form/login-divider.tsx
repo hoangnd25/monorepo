@@ -6,10 +6,7 @@ export interface LoginDividerProps {
   text?: string;
 }
 
-export function LoginDivider({
-  children,
-  text = 'other options',
-}: LoginDividerProps) {
+export function LoginDivider({ children, text = 'or' }: LoginDividerProps) {
   const displayText = children || text;
 
   return (

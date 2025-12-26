@@ -1,5 +1,4 @@
 import { Button, Stack } from '../../chakra';
-import { LoginDivider } from './login-divider';
 
 export interface SocialProvider {
   id: string;
@@ -11,12 +10,12 @@ export interface SocialProvider {
 
 export interface LoginSocialProvidersProps {
   providers?: SocialProvider[];
-  isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export function LoginSocialProviders({
   providers,
-  isLoading = false,
+  disabled = false,
 }: LoginSocialProvidersProps) {
   if (!providers || providers.length === 0) {
     return null;
@@ -30,7 +29,6 @@ export function LoginSocialProviders({
 
   return (
     <>
-      <LoginDivider />
       <Stack gap={3}>
         {visibleProviders.map((provider) => (
           <Button
@@ -40,7 +38,7 @@ export function LoginSocialProviders({
             variant="outline"
             size="lg"
             onClick={provider.onClick}
-            disabled={isLoading}
+            disabled={disabled}
           >
             {provider.icon}
             {provider.label}

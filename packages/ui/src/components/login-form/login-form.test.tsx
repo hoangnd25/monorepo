@@ -16,8 +16,8 @@ function renderLoginForm(props = {}) {
 }
 
 describe('LoginForm', () => {
-  describe('Email Validation', () => {
-    it('should show error when submitting empty email', async () => {
+  describe('Username Validation', () => {
+    it('should show error when submitting empty username', async () => {
       const user = userEvent.setup();
       renderLoginForm();
 
@@ -63,16 +63,16 @@ describe('LoginForm', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should use custom validation when onValidateEmail is provided', async () => {
+    it('should use custom validation when onValidateUsername is provided', async () => {
       const user = userEvent.setup();
-      const customValidate = vi.fn((email: string) => {
-        if (email === 'blocked@example.com') {
-          return 'This email is blocked';
+      const customValidate = vi.fn((username: string) => {
+        if (username === 'blocked@example.com') {
+          return 'This username is blocked';
         }
         return undefined;
       });
 
-      renderLoginForm({ onValidateEmail: customValidate });
+      renderLoginForm({ onValidateUsername: customValidate });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'blocked@example.com');
@@ -81,7 +81,7 @@ describe('LoginForm', () => {
       await user.click(continueButton);
 
       expect(
-        await screen.findByText('This email is blocked')
+        await screen.findByText('This username is blocked')
       ).toBeInTheDocument();
       expect(customValidate).toHaveBeenCalledWith('blocked@example.com');
     });
@@ -100,34 +100,15 @@ describe('LoginForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText('Password')).toBeInTheDocument();
       });
+
+      // Username should be shown in disabled input
+      const disabledEmailInput = screen.getByDisplayValue('user@example.com');
+      expect(disabledEmailInput).toBeDisabled();
     });
   });
 
   describe('Two-Step Navigation', () => {
-    it('should navigate to password step after valid email', async () => {
-      const user = userEvent.setup();
-      renderLoginForm();
-
-      // Start on email step
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-
-      const emailInput = screen.getByLabelText(/email/i);
-      await user.type(emailInput, 'user@example.com');
-
-      const continueButton = screen.getByRole('button', { name: /continue/i });
-      await user.click(continueButton);
-
-      // Should be on password step
-      await waitFor(() => {
-        expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      });
-
-      // Email should be shown in disabled input
-      const disabledEmailInput = screen.getByDisplayValue('user@example.com');
-      expect(disabledEmailInput).toBeDisabled();
-    });
-
-    it('should navigate back to email step when edit button is clicked', async () => {
+    it('should navigate back to username step when edit button is clicked', async () => {
       const user = userEvent.setup();
       renderLoginForm();
 
@@ -146,31 +127,35 @@ describe('LoginForm', () => {
       const editButton = screen.getByRole('button', { name: /edit/i });
       await user.click(editButton);
 
-      // Should be back on email step
+      // Should be back on username step
       await waitFor(() => {
-        expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+        const usernameInput = screen.getByLabelText(/email/i);
+        expect(usernameInput).toBeInTheDocument();
+        expect(usernameInput).not.toBeDisabled();
         expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
       });
 
-      // Email should be preserved
+      // Username should be preserved
       const emailInputAgain = screen.getByLabelText(/email/i);
       expect(emailInputAgain).toHaveValue('user@example.com');
     });
   });
 
-  describe('Async Email Verification', () => {
+  describe('Async Username Verification', () => {
     beforeEach(() => {
       vi.clearAllMocks();
     });
 
-    it('should show loading state during email verification', async () => {
+    it('should show loading state during username verification', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(async (): Promise<LoginMethodsResponse> => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return { methods: ['password'] };
-      });
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return { methods: ['password'] };
+        }
+      );
 
-      renderLoginForm({ onEmailVerified });
+      renderLoginForm({ onUsernameVerified });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -185,19 +170,24 @@ describe('LoginForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText('Password')).toBeInTheDocument();
       });
+
+      // Verify callback was called with correct username
+      expect(onUsernameVerified).toHaveBeenCalledWith('user@example.com');
     });
 
     it('should handle verification error', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(async (): Promise<LoginMethodsResponse> => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        return {
-          methods: [],
-          error: 'Account not found',
-        };
-      });
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return {
+            methods: [],
+            error: 'Account not found',
+          };
+        }
+      );
 
-      renderLoginForm({ onEmailVerified });
+      renderLoginForm({ onUsernameVerified });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -205,19 +195,21 @@ describe('LoginForm', () => {
       const continueButton = screen.getByRole('button', { name: /continue/i });
       await user.click(continueButton);
 
-      // Should show error and stay on email step
+      // Should show error and stay on username step
       expect(await screen.findByText('Account not found')).toBeInTheDocument();
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     });
 
     it('should handle empty methods array', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(async (): Promise<LoginMethodsResponse> => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        return { methods: [] };
-      });
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return { methods: [] };
+        }
+      );
 
-      renderLoginForm({ onEmailVerified });
+      renderLoginForm({ onUsernameVerified });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -235,11 +227,11 @@ describe('LoginForm', () => {
 
     it('should handle verification exception', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(async () => {
+      const onUsernameVerified = vi.fn(async () => {
         throw new Error('Network error');
       });
 
-      renderLoginForm({ onEmailVerified });
+      renderLoginForm({ onUsernameVerified });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -259,13 +251,13 @@ describe('LoginForm', () => {
   describe('Dynamic Login Methods', () => {
     it('should show only password input when methods contain password only', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(
+      const onUsernameVerified = vi.fn(
         async (): Promise<LoginMethodsResponse> => ({
           methods: ['password'],
         })
       );
 
-      renderLoginForm({ onEmailVerified });
+      renderLoginForm({ onUsernameVerified });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -285,14 +277,18 @@ describe('LoginForm', () => {
 
     it('should show only magic link button when methods contain magic-link only', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(
+      const onUsernameVerified = vi.fn(
         async (): Promise<LoginMethodsResponse> => ({
           methods: ['magic-link'],
         })
       );
       const onMagicLinkRequest = vi.fn();
 
-      renderLoginForm({ onEmailVerified, onMagicLinkRequest });
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -312,14 +308,18 @@ describe('LoginForm', () => {
 
     it('should show both password and magic link when methods contain both', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(
+      const onUsernameVerified = vi.fn(
         async (): Promise<LoginMethodsResponse> => ({
           methods: ['password', 'magic-link'],
         })
       );
       const onMagicLinkRequest = vi.fn();
 
-      renderLoginForm({ onEmailVerified, onMagicLinkRequest });
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -337,14 +337,18 @@ describe('LoginForm', () => {
 
     it('should call onMagicLinkRequest when magic link button is clicked', async () => {
       const user = userEvent.setup();
-      const onEmailVerified = vi.fn(
+      const onUsernameVerified = vi.fn(
         async (): Promise<LoginMethodsResponse> => ({
           methods: ['magic-link'],
         })
       );
       const onMagicLinkRequest = vi.fn();
 
-      renderLoginForm({ onEmailVerified, onMagicLinkRequest });
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, 'user@example.com');
@@ -372,9 +376,9 @@ describe('LoginForm', () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
 
-      renderLoginForm({ onSubmit, defaultEmail: 'user@example.com' });
+      renderLoginForm({ onSubmit, defaultUsername: 'user@example.com' });
 
-      // Should start on password step due to defaultEmail
+      // Should start on password step due to defaultUsername
       expect(screen.getByLabelText('Password')).toBeInTheDocument();
 
       const submitButton = screen.getByRole('button', { name: /sign in/i });
@@ -388,7 +392,7 @@ describe('LoginForm', () => {
 
     it('should clear password error when user starts typing', async () => {
       const user = userEvent.setup();
-      renderLoginForm({ defaultEmail: 'user@example.com' });
+      renderLoginForm({ defaultUsername: 'user@example.com' });
 
       const submitButton = screen.getByRole('button', { name: /sign in/i });
       await user.click(submitButton);
@@ -405,11 +409,11 @@ describe('LoginForm', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should call onSubmit with email and password when form is valid', async () => {
+    it('should call onSubmit with username and password when form is valid', async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
 
-      renderLoginForm({ onSubmit, defaultEmail: 'user@example.com' });
+      renderLoginForm({ onSubmit, defaultUsername: 'user@example.com' });
 
       const passwordInput = screen.getByLabelText('Password');
       await user.type(passwordInput, 'mypassword123');
@@ -427,7 +431,7 @@ describe('LoginForm', () => {
 
     it('should show custom password error from prop', () => {
       renderLoginForm({
-        defaultEmail: 'user@example.com',
+        defaultUsername: 'user@example.com',
         passwordError: 'Password must be at least 8 characters',
       });
 
@@ -437,72 +441,67 @@ describe('LoginForm', () => {
     });
   });
 
-  describe('Default Email Prop', () => {
-    it('should start on password step when defaultEmail is provided', () => {
-      renderLoginForm({ defaultEmail: 'user@example.com' });
+  describe('Default Username Prop', () => {
+    it('should start on password step when defaultUsername is provided', () => {
+      renderLoginForm({ defaultUsername: 'user@example.com' });
 
       // Should be on password step
       expect(screen.getByLabelText('Password')).toBeInTheDocument();
 
-      // Email should be shown in disabled input
-      const emailInput = screen.getByDisplayValue('user@example.com');
-      expect(emailInput).toBeDisabled();
+      // Username should be shown in disabled input
+      const usernameInput = screen.getByDisplayValue('user@example.com');
+      expect(usernameInput).toBeDisabled();
     });
 
-    it('should start on email step when defaultEmail is not provided', () => {
+    it('should start on username step when defaultUsername is not provided', () => {
       renderLoginForm();
 
-      // Should be on email step
+      // Should be on username step
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     });
 
-    it('should allow editing email when starting with defaultEmail', async () => {
+    it('should allow editing username when starting with defaultUsername', async () => {
       const user = userEvent.setup();
-      renderLoginForm({ defaultEmail: 'user@example.com' });
+      renderLoginForm({ defaultUsername: 'user@example.com' });
 
       // Click edit button
       const editButton = screen.getByRole('button', { name: /edit/i });
       await user.click(editButton);
 
-      // Should be back on email step
+      // Should be back on username step
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       });
 
-      // Email should be preserved
-      const emailInput = screen.getByLabelText(/email/i);
-      expect(emailInput).toHaveValue('user@example.com');
+      // Username should be preserved
+      const usernameInput = screen.getByLabelText(/email/i);
+      expect(usernameInput).toHaveValue('user@example.com');
     });
   });
 
   describe('Loading State', () => {
-    it('should disable submit button when isLoading is true', () => {
+    it('should disable submit button when isLoading is true on password step', () => {
       renderLoginForm({
         isLoading: true,
-        defaultEmail: 'user@example.com',
+        defaultUsername: 'user@example.com',
       });
 
-      // When loading, the button text may be replaced by a spinner
-      // Find all buttons with type="submit"
       const buttons = screen.getAllByRole('button');
       const submitButton = buttons.find(
         (btn) => btn.getAttribute('type') === 'submit'
       );
-      expect(submitButton).toBeDefined();
-      expect(submitButton).toHaveAttribute('disabled');
+      expect(submitButton).toBeDisabled();
     });
 
-    it('should disable continue button when isLoading is true on email step', () => {
+    it('should disable continue button when isLoading is true on username step', () => {
       renderLoginForm({ isLoading: true });
 
-      // When loading, the button text may be replaced by a spinner
       const buttons = screen.getAllByRole('button');
       const continueButton = buttons.find(
         (btn) => btn.getAttribute('type') === 'submit'
       );
-      expect(continueButton).toBeDefined();
-      expect(continueButton).toHaveAttribute('disabled');
+      expect(continueButton).toBeDisabled();
     });
   });
 
@@ -521,26 +520,32 @@ describe('LoginForm', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should hide remember me when showRememberMe is false', () => {
+    it('should hide remember me when rememberMe.enabled is false', () => {
       renderLoginForm({
-        showRememberMe: false,
-        defaultEmail: 'user@example.com',
+        rememberMe: { enabled: false },
+        defaultUsername: 'user@example.com',
       });
 
       expect(screen.queryByText('Keep me signed in')).not.toBeInTheDocument();
     });
 
-    it('should hide forgot password when showForgotPassword is false', () => {
+    it('should hide forgot password when password is disabled', () => {
       renderLoginForm({
-        showForgotPassword: false,
-        defaultEmail: 'user@example.com',
+        password: {
+          enabled: false,
+        },
+        magicLink: {
+          enabled: true,
+        },
+        defaultUsername: 'user@example.com',
+        onUsernameVerified: async () => ({ methods: ['magic-link'] }),
       });
 
       expect(screen.queryByText('Forgot password?')).not.toBeInTheDocument();
     });
 
-    it('should hide sign up link when showSignUpLink is false', () => {
-      renderLoginForm({ showSignUpLink: false });
+    it('should hide sign up link when signUp.enabled is false', () => {
+      renderLoginForm({ signUp: { enabled: false } });
 
       expect(
         screen.queryByText("Don't have an account?")
@@ -555,7 +560,7 @@ describe('LoginForm', () => {
 
       renderLoginForm({
         onForgotPassword,
-        defaultEmail: 'user@example.com',
+        defaultUsername: 'user@example.com',
       });
 
       const forgotPasswordLink = screen.getByText('Forgot password?');

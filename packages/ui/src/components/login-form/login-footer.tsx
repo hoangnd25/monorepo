@@ -1,32 +1,37 @@
 import { Text, ChakraLink } from '../../chakra';
 
+export interface LoginFooterSignUp {
+  enabled?: boolean;
+  text?: string;
+  linkText?: string;
+  onLinkClick?: () => void;
+}
+
 export interface LoginFooterProps {
-  signUpText?: string;
-  signUpLinkText?: string;
-  onSignUp?: () => void;
-  show?: boolean;
+  signUp?: LoginFooterSignUp;
 }
 
 export function LoginFooter({
-  signUpText,
-  signUpLinkText,
-  onSignUp,
-  show = true,
+  signUp = {
+    enabled: true,
+    text: "Don't have an account?",
+    linkText: 'Create account',
+  },
 }: LoginFooterProps) {
-  if (!show) {
+  if (!signUp?.enabled) {
     return null;
   }
 
   return (
     <Text textAlign="center" color="fg.muted">
-      {signUpText}{' '}
+      {signUp?.text}{' '}
       <ChakraLink
         colorPalette="teal"
         fontWeight="medium"
-        onClick={onSignUp}
+        onClick={signUp?.onLinkClick}
         cursor="pointer"
       >
-        {signUpLinkText}
+        {signUp?.linkText}
       </ChakraLink>
     </Text>
   );

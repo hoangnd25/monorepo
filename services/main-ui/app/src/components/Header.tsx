@@ -33,7 +33,7 @@ export function Header() {
       </Box>
 
       <LoginDialog
-        showSignUpLink={false}
+        signUp={{ enabled: false }}
         socialProviders={[
           {
             id: 'google',

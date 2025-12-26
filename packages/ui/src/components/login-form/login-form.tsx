@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { Box, VStack } from '../../chakra';
+import { Box, Stack, VStack } from '../../chakra';
 import { LoginHeader } from './login-header';
-import { LoginEmailStep } from './login-email-step';
+import { LoginUsernameStep } from './login-username-step';
 import { LoginPasswordStep } from './login-password-step';
-import type { SocialProvider } from './login-social-providers';
+import { LoginFooter } from './login-footer';
+import {
+  LoginSocialProviders,
+  type SocialProvider,
+} from './login-social-providers';
+import { LoginDivider } from './login-divider';
 
 export type LoginMethod = 'password' | 'magic-link';
 
@@ -18,31 +23,59 @@ export interface LoginFormHeading {
   logo?: React.ReactNode;
 }
 
+export interface LoginFormMagicLink {
+  enabled?: boolean;
+  buttonText?: string;
+}
+
+export interface LoginFormSignUp {
+  enabled?: boolean;
+  text?: string;
+  linkText?: string;
+  onLinkClick?: () => void;
+}
+
+export interface LoginFormRememberMe {
+  enabled?: boolean;
+  label?: string;
+}
+
+export interface LoginFormPassword {
+  enabled?: boolean;
+  label?: string;
+  forgotPasswordLinkText?: string;
+}
+
+export interface LoginFormUsername {
+  label?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+  validate?: (value: string) => string | undefined;
+}
+
+export interface LoginFormButtons {
+  submit?: string;
+  continue?: string;
+}
+
 export interface LoginFormProps {
-  onSubmit?: (email: string, password: string) => void;
-  onMagicLinkRequest?: (email: string) => void;
+  onSubmit?: (username: string, password: string) => void;
+  onMagicLinkRequest?: (username: string) => void;
   onForgotPassword?: () => void;
   onSignUp?: () => void;
-  onValidateEmail?: (email: string) => string | undefined;
-  onEmailVerified?: (email: string) => Promise<LoginMethodsResponse>;
+  onValidateUsername?: (username: string) => string | undefined;
+  onUsernameVerified?: (username: string) => Promise<LoginMethodsResponse>;
   socialProviders?: SocialProvider[];
   heading?: LoginFormHeading;
-  emailLabel?: string;
-  emailPlaceholder?: string;
-  passwordLabel?: string;
-  submitButtonText?: string;
-  continueButtonText?: string;
-  rememberMeLabel?: string;
-  forgotPasswordText?: string;
-  signUpText?: string;
-  signUpLinkText?: string;
-  magicLinkButtonText?: string;
+  magicLink?: LoginFormMagicLink;
+  signUp?: LoginFormSignUp;
+  rememberMe?: LoginFormRememberMe;
+  password?: LoginFormPassword;
+  username?: LoginFormUsername;
+  buttons?: LoginFormButtons;
   isLoading?: boolean;
   passwordError?: string;
-  showRememberMe?: boolean;
-  showForgotPassword?: boolean;
-  showSignUpLink?: boolean;
-  defaultEmail?: string;
+  defaultUsername?: string;
 }
 
 export function LoginForm({
@@ -50,98 +83,137 @@ export function LoginForm({
   onMagicLinkRequest,
   onForgotPassword,
   onSignUp,
-  onValidateEmail,
-  onEmailVerified,
+  onValidateUsername,
+  onUsernameVerified,
   socialProviders,
   heading = {
     title: 'Welcome back',
     subtitle: 'Sign in to your account to continue',
   },
-  emailLabel = 'Email',
-  emailPlaceholder = 'you@example.com',
-  passwordLabel = 'Password',
-  submitButtonText = 'Sign in',
-  continueButtonText = 'Continue',
-  rememberMeLabel = 'Keep me signed in',
-  forgotPasswordText = 'Forgot password?',
-  signUpText = "Don't have an account?",
-  signUpLinkText = 'Create account',
-  magicLinkButtonText = 'Send me a login link',
+  magicLink = {
+    enabled: false,
+    buttonText: 'Send me a login link',
+  },
+  signUp = {
+    enabled: true,
+    text: "Don't have an account?",
+    linkText: 'Create account',
+  },
+  rememberMe = {
+    enabled: true,
+    label: 'Keep me signed in',
+  },
+  password = {
+    enabled: true,
+    label: 'Password',
+    forgotPasswordLinkText: 'Forgot password?',
+  },
+  username = {
+    label: 'Email',
+    placeholder: 'you@example.com',
+    validate: (value: string) => {
+      if (!value || value.trim() === '') {
+        return 'Please enter your email address';
+      }
+      if (!/\S+@\S+\.\S+/.test(value)) {
+        return 'Please enter a valid email address';
+      }
+      return undefined;
+    },
+  },
+  buttons = {
+    submit: 'Sign in',
+    continue: 'Continue',
+  },
   isLoading = false,
   passwordError,
-  showRememberMe = true,
-  showForgotPassword = true,
-  showSignUpLink = true,
-  defaultEmail,
+  defaultUsername,
 }: LoginFormProps) {
-  const [step, setStep] = useState<'email' | 'password'>(
-    defaultEmail ? 'password' : 'email'
+  const [step, setStep] = useState<'username' | 'password'>(
+    defaultUsername ? 'password' : 'username'
   );
-  const [email, setEmail] = useState(defaultEmail || '');
-  const [currentEmailError, setCurrentEmailError] = useState<
+  const [usernameValue, setUsernameValue] = useState(defaultUsername || '');
+  const [currentUsernameError, setCurrentUsernameError] = useState<
     string | undefined
   >();
   const [currentPasswordError, setCurrentPasswordError] = useState<
     string | undefined
   >();
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isVerifyingUsername, setIsVerifyingUsername] = useState(false);
   const [availableMethods, setAvailableMethods] = useState<LoginMethod[]>([
     'password',
   ]);
 
-  const defaultValidateEmail = (email: string): string | undefined => {
-    if (!email || email.trim() === '') {
-      return 'Please enter your email address';
+  // Determine final available methods based on configuration and API response
+  const finalAvailableMethods = availableMethods.filter((method) => {
+    if (method === 'magic-link') {
+      return magicLink?.enabled !== false;
     }
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      return 'Please enter a valid email address';
+    if (method === 'password') {
+      return password?.enabled !== false;
+    }
+    return true;
+  });
+
+  const defaultValidateUsername = (value: string): string | undefined => {
+    if (!value || value.trim() === '') {
+      return `Please enter your ${username?.label?.toLowerCase() || 'username'}`;
     }
     return undefined;
   };
 
-  const validateEmail = onValidateEmail || defaultValidateEmail;
+  const validateUsername = (value: string): string | undefined => {
+    // Priority: onValidateUsername prop > username.validate > default validation
+    if (onValidateUsername) {
+      return onValidateUsername(value);
+    }
+    if (username?.validate) {
+      return username.validate(value);
+    }
+    return defaultValidateUsername(value);
+  };
 
-  const handleEmailSubmit: React.FormEventHandler<HTMLFormElement> = async (
+  const handleUsernameSubmit: React.FormEventHandler<HTMLFormElement> = async (
     e
   ) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const emailValue = formData.get('email') as string;
+    const usernameInput = formData.get('username') as string;
 
-    const validationError = validateEmail(emailValue);
+    const validationError = validateUsername(usernameInput);
     if (validationError) {
-      setCurrentEmailError(validationError);
+      setCurrentUsernameError(validationError);
       return;
     }
 
-    setCurrentEmailError(undefined);
-    setEmail(emailValue);
+    setCurrentUsernameError(undefined);
+    setUsernameValue(usernameInput);
 
-    // If onEmailVerified callback is provided, call it to get available login methods
-    if (onEmailVerified) {
-      setIsVerifyingEmail(true);
+    // If onUsernameVerified callback is provided, call it to get available login methods
+    if (onUsernameVerified) {
+      setIsVerifyingUsername(true);
       try {
-        const response = await onEmailVerified(emailValue);
+        const response = await onUsernameVerified(usernameInput);
         if (response.error) {
-          setCurrentEmailError(response.error);
-          setIsVerifyingEmail(false);
+          setCurrentUsernameError(response.error);
+          setIsVerifyingUsername(false);
           return;
         }
         // Check if methods array is empty
         if (!response.methods || response.methods.length === 0) {
-          setCurrentEmailError(
+          setCurrentUsernameError(
             'This email is not registered. Please sign up first.'
           );
-          setIsVerifyingEmail(false);
+          setIsVerifyingUsername(false);
           return;
         }
         setAvailableMethods(response.methods);
-        setIsVerifyingEmail(false);
+        setIsVerifyingUsername(false);
       } catch {
-        setCurrentEmailError(
+        setCurrentUsernameError(
           'We could not verify your email. Please try again.'
         );
-        setIsVerifyingEmail(false);
+        setIsVerifyingUsername(false);
         return;
       }
     }
@@ -161,19 +233,21 @@ export function LoginForm({
     }
 
     setCurrentPasswordError(undefined);
-    onSubmit?.(email, password);
+    onSubmit?.(usernameValue, password);
   };
 
   const handleMagicLinkRequest = () => {
-    onMagicLinkRequest?.(email);
+    onMagicLinkRequest?.(usernameValue);
   };
 
   const handleBack = () => {
-    setStep('email');
+    setStep('username');
   };
 
-  const isEmailStep = step === 'email';
-  const formHandler = isEmailStep ? handleEmailSubmit : handlePasswordSubmit;
+  const isUsernameStep = step === 'username';
+  const formHandler = isUsernameStep
+    ? handleUsernameSubmit
+    : handlePasswordSubmit;
 
   return (
     <Box
@@ -190,41 +264,71 @@ export function LoginForm({
           subtitle={heading?.subtitle}
         />
 
-        {isEmailStep ? (
-          <LoginEmailStep
-            email={email}
-            emailError={currentEmailError}
-            emailLabel={emailLabel}
-            emailPlaceholder={emailPlaceholder}
-            continueButtonText={continueButtonText}
-            isLoading={isLoading || isVerifyingEmail}
-            onEmailChange={() => setCurrentEmailError(undefined)}
-            socialProviders={socialProviders}
-            showSignUpLink={showSignUpLink}
-            signUpText={signUpText}
-            signUpLinkText={signUpLinkText}
-            onSignUp={onSignUp}
+        <Stack gap={3}>
+          <LoginUsernameStep
+            usernameField={{
+              value: usernameValue,
+              error: currentUsernameError,
+              label: username?.label,
+              placeholder: username?.placeholder,
+              autoFocus: username?.autoFocus,
+              disabled: isUsernameStep
+                ? isLoading || isVerifyingUsername
+                : undefined,
+              onChange: isUsernameStep
+                ? () => setCurrentUsernameError(undefined)
+                : undefined,
+            }}
+            continueButtonText={buttons?.continue}
+            isLoading={
+              isUsernameStep ? isLoading || isVerifyingUsername : false
+            }
+            showEditButton={!isUsernameStep}
+            onEdit={!isUsernameStep ? handleBack : undefined}
           />
-        ) : (
-          <LoginPasswordStep
-            email={email}
-            emailLabel={emailLabel}
-            passwordLabel={passwordLabel}
-            passwordError={currentPasswordError || passwordError}
-            submitButtonText={submitButtonText}
-            magicLinkButtonText={magicLinkButtonText}
-            rememberMeLabel={rememberMeLabel}
-            forgotPasswordText={forgotPasswordText}
-            showRememberMe={showRememberMe}
-            showForgotPassword={showForgotPassword}
-            availableMethods={availableMethods}
-            isLoading={isLoading}
-            onBack={handleBack}
-            onForgotPassword={onForgotPassword}
-            onMagicLinkRequest={handleMagicLinkRequest}
-            onPasswordChange={() => setCurrentPasswordError(undefined)}
-          />
-        )}
+
+          {isUsernameStep && socialProviders && socialProviders.length > 0 && (
+            <>
+              <LoginDivider text="other methods" />
+              <LoginSocialProviders
+                providers={socialProviders}
+                disabled={isLoading || isVerifyingUsername}
+              />
+            </>
+          )}
+
+          {!isUsernameStep && (
+            <LoginPasswordStep
+              password={{
+                error: currentPasswordError || passwordError,
+                label: password?.label,
+                forgotPasswordLinkText: password?.forgotPasswordLinkText,
+              }}
+              buttons={{
+                submit: buttons?.submit || 'Sign in',
+                magicLink: magicLink?.buttonText || 'Send me a login link',
+              }}
+              rememberMe={{
+                show: rememberMe?.enabled !== false,
+                label: rememberMe?.label,
+              }}
+              availableMethods={finalAvailableMethods}
+              isLoading={isLoading}
+              onForgotPassword={onForgotPassword}
+              onMagicLinkRequest={handleMagicLinkRequest}
+              onPasswordChange={() => setCurrentPasswordError(undefined)}
+            />
+          )}
+        </Stack>
+
+        <LoginFooter
+          signUp={{
+            enabled: signUp?.enabled,
+            text: signUp?.text,
+            linkText: signUp?.linkText,
+            onLinkClick: onSignUp,
+          }}
+        />
       </VStack>
     </Box>
   );

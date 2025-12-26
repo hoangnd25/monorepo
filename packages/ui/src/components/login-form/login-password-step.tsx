@@ -1,52 +1,51 @@
-import {
-  Button,
-  Checkbox,
-  Field,
-  Flex,
-  IconButton,
-  Input,
-  InputGroup,
-  Stack,
-} from '../../chakra';
+import { Button, Checkbox, Field, Flex, Stack } from '../../chakra';
 import { PasswordInput } from '../password-input';
-import { LuPencil } from 'react-icons/lu';
 import { LoginDivider } from './login-divider';
 
 export type LoginMethod = 'password' | 'magic-link';
 
+export interface LoginPasswordStepPassword {
+  error?: string;
+  label?: string;
+  forgotPasswordLinkText?: string;
+}
+
+export interface LoginPasswordStepButtons {
+  submit?: string;
+  magicLink?: string;
+}
+
+export interface LoginPasswordStepRememberMe {
+  show?: boolean;
+  label?: string;
+}
+
 export interface LoginPasswordStepProps {
-  email: string;
-  emailLabel?: string;
-  passwordLabel?: string;
-  passwordError?: string;
-  submitButtonText?: string;
-  magicLinkButtonText?: string;
-  rememberMeLabel?: string;
-  forgotPasswordText?: string;
-  showRememberMe?: boolean;
-  showForgotPassword?: boolean;
+  password?: LoginPasswordStepPassword;
+  buttons?: LoginPasswordStepButtons;
+  rememberMe?: LoginPasswordStepRememberMe;
   availableMethods?: LoginMethod[];
   isLoading?: boolean;
-  onBack?: () => void;
   onForgotPassword?: () => void;
   onMagicLinkRequest?: () => void;
   onPasswordChange?: () => void;
 }
 
 export function LoginPasswordStep({
-  email,
-  emailLabel = 'Email address',
-  passwordLabel = 'Password',
-  passwordError,
-  submitButtonText = 'Sign in',
-  magicLinkButtonText = 'Send me a login link',
-  rememberMeLabel = 'Keep me signed in',
-  forgotPasswordText = 'Forgot password?',
-  showRememberMe = true,
-  showForgotPassword = true,
+  password = {
+    label: 'Password',
+    forgotPasswordLinkText: 'Forgot password?',
+  },
+  buttons = {
+    submit: 'Sign in',
+    magicLink: 'Send me a login link',
+  },
+  rememberMe = {
+    show: true,
+    label: 'Keep me signed in',
+  },
   availableMethods = ['password'],
   isLoading = false,
-  onBack,
   onForgotPassword,
   onMagicLinkRequest,
   onPasswordChange,
@@ -56,32 +55,10 @@ export function LoginPasswordStep({
 
   return (
     <>
-      <Stack gap={4}>
-        <Field.Root>
-          <Field.Label>{emailLabel}</Field.Label>
-          <InputGroup
-            endElement={
-              <IconButton
-                tabIndex={-1}
-                me="-2"
-                aspectRatio="square"
-                size="sm"
-                variant="ghost"
-                height="calc(100% - {spacing.2})"
-                aria-label="Edit email"
-                onClick={onBack}
-              >
-                <LuPencil />
-              </IconButton>
-            }
-          >
-            <Input value={email} disabled size="lg" />
-          </InputGroup>
-        </Field.Root>
-
-        {showPassword && (
-          <Field.Root invalid={!!passwordError}>
-            <Field.Label>{passwordLabel}</Field.Label>
+      {showPassword && (
+        <Stack gap={4}>
+          <Field.Root invalid={!!password?.error}>
+            <Field.Label>{password?.label}</Field.Label>
             <PasswordInput
               name="password"
               disabled={isLoading}
@@ -89,33 +66,31 @@ export function LoginPasswordStep({
               autoFocus
               onChange={onPasswordChange}
             />
-            {passwordError && (
-              <Field.ErrorText>{passwordError}</Field.ErrorText>
+            {password?.error && (
+              <Field.ErrorText>{password.error}</Field.ErrorText>
             )}
           </Field.Root>
-        )}
-      </Stack>
+        </Stack>
+      )}
 
-      {showPassword && (showRememberMe || showForgotPassword) && (
+      {showPassword && rememberMe?.show !== false && (
         <Flex justify="space-between" align="center">
-          {showRememberMe && (
+          {rememberMe?.show && (
             <Checkbox.Root defaultChecked size="sm">
               <Checkbox.HiddenInput name="remember" />
               <Checkbox.Control />
-              <Checkbox.Label>{rememberMeLabel}</Checkbox.Label>
+              <Checkbox.Label>{rememberMe?.label}</Checkbox.Label>
             </Checkbox.Root>
           )}
-          {showForgotPassword && (
-            <Button
-              variant="plain"
-              size="sm"
-              colorPalette="teal"
-              onClick={onForgotPassword}
-              type="button"
-            >
-              {forgotPasswordText}
-            </Button>
-          )}
+          <Button
+            variant="plain"
+            size="sm"
+            colorPalette="teal"
+            onClick={onForgotPassword}
+            type="button"
+          >
+            {password?.forgotPasswordLinkText}
+          </Button>
         </Flex>
       )}
 
@@ -128,7 +103,7 @@ export function LoginPasswordStep({
           loading={isLoading}
           disabled={isLoading}
         >
-          {submitButtonText}
+          {buttons?.submit}
         </Button>
       )}
 
@@ -143,7 +118,7 @@ export function LoginPasswordStep({
           onClick={onMagicLinkRequest}
           disabled={isLoading}
         >
-          {magicLinkButtonText}
+          {buttons?.magicLink}
         </Button>
       )}
     </>
