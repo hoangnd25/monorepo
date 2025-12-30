@@ -459,7 +459,9 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
                   },
                   {} as Record<string, BehaviorOptions>
                 ),
-              ...(cdk?.distribution?.additionalBehaviors || {}),
+              ...(cdk?.distribution && typeof cdk.distribution === 'object'
+                ? cdk.distribution.additionalBehaviors || {}
+                : {}),
             },
           },
         },
@@ -525,7 +527,9 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
           cachePolicy: cdk?.serverCachePolicy ?? useServerBehaviorCachePolicy(),
           responseHeadersPolicy: cdk?.responseHeadersPolicy,
           originRequestPolicy: useServerBehaviorOriginRequestPolicy(),
-          ...(cdk?.distribution?.defaultBehavior || {}),
+          ...(cdk?.distribution && typeof cdk.distribution === 'object'
+            ? cdk.distribution.defaultBehavior || {}
+            : {}),
           functionAssociations: [
             ...(cfFunction
               ? [
@@ -535,7 +539,9 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
                   },
                 ]
               : []),
-            ...(cdk?.distribution?.defaultBehavior?.functionAssociations || []),
+            ...(cdk?.distribution && typeof cdk.distribution === 'object'
+              ? cdk.distribution.defaultBehavior?.functionAssociations || []
+              : []),
           ],
           edgeLambdas: [
             ...(edgeFunction
@@ -547,7 +553,9 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
                   },
                 ]
               : []),
-            ...(cdk?.distribution?.defaultBehavior?.edgeLambdas || []),
+            ...(cdk?.distribution && typeof cdk.distribution === 'object'
+              ? cdk.distribution.defaultBehavior?.edgeLambdas || []
+              : []),
           ],
         };
       }

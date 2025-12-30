@@ -11,5 +11,14 @@
       "command": ["npx", "@playwright/mcp@latest"],
       "enabled": true,
     },
+    "aws-iac": {
+      "type": "local",
+      "command": ["uvx", "awslabs.aws-iac-mcp-server@latest"],
+      "environment": {
+        "AWS_PROFILE": "default",
+        "FASTMCP_LOG_LEVEL": "ERROR",
+      },
+      "enabled": true,
+    },
   },
 }

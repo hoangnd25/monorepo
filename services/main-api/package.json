@@ -9,7 +9,9 @@
     "remove": "sst remove",
     "console": "sst console",
     "lint": "eslint \"**/*.ts*\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@functions/main-api": "workspace:*",
@@ -23,6 +25,7 @@
     "constructs": "catalog:",
     "sst": "catalog:",
     "typescript": "catalog:",
-    "eslint": "catalog:"
+    "eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }

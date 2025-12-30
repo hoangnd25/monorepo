@@ -2,6 +2,8 @@
 
 A modern, full-stack monorepo powered by [TanStack Start](https://tanstack.com/start), [Turborepo](https://turbo.build/repo), and [pnpm](https://pnpm.io/).
 
+> **For AI Agents**: This project includes detailed development guidelines in `AGENTS.md` and specialized agents in `.opencode/agent/`. See [Available AI Agents](#available-ai-agents) below.
+
 ## Tech Stack
 
 - **Framework**: TanStack Start (React 19)
@@ -192,3 +194,23 @@ The repository includes VS Code configuration for optimal development experience
 - [Turborepo Documentation](https://turbo.build/repo/docs)
 - [pnpm Workspace Catalogs](https://pnpm.io/catalogs)
 - [pnpm Documentation](https://pnpm.io/)
+
+## Available AI Agents
+
+This project includes specialized AI agents to assist with development tasks:
+
+### IAC Test Writer (`@iac-test`)
+
+Writes comprehensive unit tests for AWS infrastructure code using SST v2 and AWS CDK.
+
+**Usage:**
+
+```
+@iac-test write tests for UserPool construct
+```
+
+**Resources:** See `.opencode/agent/iac-test.md` and `docs/iac-testing.md`
+
+---
+
+**Note for AI Agents**: Always consult `AGENTS.md` for project-specific coding standards, commands, and architectural patterns before making changes.
