@@ -18,14 +18,14 @@
     "@lib/sst-helpers": "workspace:*"
   },
   "devDependencies": {
+    "@config/eslint": "workspace:*",
+    "@config/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "aws-cdk-lib": "catalog:",
-    "@config/tsconfig": "workspace:*",
-    "@config/eslint": "workspace:*",
     "constructs": "catalog:",
+    "eslint": "catalog:",
     "sst": "catalog:",
     "typescript": "catalog:",
-    "eslint": "catalog:",
     "vitest": "catalog:"
   }
 }

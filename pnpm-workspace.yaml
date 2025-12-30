@@ -3,8 +3,13 @@ packages:
   - services/*/app
   - services/*/functions
   - packages/*
+  - test-local-dynamodb
 
 catalog:
+  '@aws-sdk/client-dynamodb': 3.632.0
+  '@aws-sdk/client-kms': 3.632.0
+  '@aws-sdk/client-ses': 3.632.0
+  '@aws-sdk/lib-dynamodb': 3.632.0
   '@testing-library/jest-dom': ^6.9.1
   '@testing-library/react': ^16.3.1
   '@testing-library/user-event': ^14.6.1
@@ -25,9 +30,8 @@ catalog:
   tsup: ^8.3.5
   typescript: ^5.9.3
   vite: ^7.1.7
-  vitest: ^4.0.16
+  vitest: 4.0.16
   zod: ^4.2.1
 
 overrides:
   aws-cdk-lib: 2.233.0
-#   constructs: 10.4.3
