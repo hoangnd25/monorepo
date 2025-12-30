@@ -1,10 +1,16 @@
 import { StackContext } from 'sst/constructs';
 import { NitroSite } from '@lib/sst-constructs';
 
-export function Main(context: StackContext) {
+export interface MainProps {
+  appPath?: string;
+}
+
+export function Main(context: StackContext, props?: MainProps) {
   const { stack } = context;
+  const appPath = props?.appPath ?? './app';
+
   const mainSite = new NitroSite(stack, 'MainSite', {
-    path: './app',
+    path: appPath,
     buildCommand: 'pnpm build:app',
     dev: {
       deploy: false,

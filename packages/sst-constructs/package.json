@@ -17,7 +17,9 @@
   "scripts": {
     "build": "tsup",
     "lint": "eslint \"**/*.ts*\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "cross-spawn": "^7.0.6",
@@ -34,7 +36,8 @@
     "eslint": "catalog:",
     "sst": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "aws-cdk-lib": "catalog:",

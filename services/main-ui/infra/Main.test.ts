@@ -1,190 +1,91 @@
 /**
  * Infrastructure tests for Main UI Stack
  *
- * Tests verify that the NitroSite construct creates the necessary AWS resources
- * for hosting the TanStack Start application with proper security, performance,
- * and integration configurations.
+ * Tests verify that the Main stack properly configures and exports
+ * the necessary outputs for external reference.
  *
- * Key infrastructure components tested:
- * - CloudFront distribution with HTTPS redirect and cache configuration
- * - S3 bucket with security best practices (public access blocking)
- * - Lambda function with API Gateway for server-side rendering
- * - IAM roles and policies for S3 access and CloudFront invalidation
- * - Stack outputs for external reference
+ * Note: Detailed NitroSite construct tests (CloudFront, S3, Lambda, IAM)
+ * are located in packages/sst-constructs/src/NitroSite.test.ts
  */
-import { describe, it, beforeAll } from 'vitest';
-import { Template, Match } from 'aws-cdk-lib/assertions';
+import {
+  describe,
+  it,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from 'vitest';
+import { Template } from 'aws-cdk-lib/assertions';
 import { initProject } from 'sst/project.js';
-import { App, getStack } from 'sst/constructs';
+import { App, getStack, StackContext } from 'sst/constructs';
 import { Main } from './Main.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Creates a stub Nitro output directory structure for testing
+ * This simulates a built Nitro app without requiring an actual build
+ */
+const createStubNitroOutput = (appPath: string) => {
+  const outputDir = path.join(appPath, '.output');
+  fs.mkdirSync(path.join(outputDir, 'public'), { recursive: true });
+  fs.mkdirSync(path.join(outputDir, 'server'), { recursive: true });
+
+  // Create stub nitro.json with required preset configuration
+  fs.writeFileSync(
+    path.join(outputDir, 'nitro.json'),
+    JSON.stringify({ preset: 'aws-lambda' })
+  );
+
+  // Create stub server handler (NitroSite expects this path to exist)
+  fs.writeFileSync(
+    path.join(outputDir, 'server', 'index.ts'),
+    'export const handler = async () => ({ statusCode: 200 });'
+  );
+};
 
 describe('Main UI Stack', () => {
+  const tmpDir = path.join(__dirname, '../.tmp-test');
+  let testAppPath: string;
+
   beforeAll(async () => {
     await initProject({});
+    // Create base tmp directory
+    fs.mkdirSync(tmpDir, { recursive: true });
   });
 
-  it('should create CloudFront distribution with S3 bucket and security configuration', async () => {
-    const app = new App({ mode: 'deploy' });
-    app.stack(Main);
-
-    await app.finish();
-
-    const template = Template.fromStack(getStack(Main));
-
-    // Group: CloudFront distribution with HTTPS redirect and cache behaviors
-    template.resourceCountIs('AWS::CloudFront::Distribution', 1);
-    template.hasResourceProperties(
-      'AWS::CloudFront::Distribution',
-      Match.objectLike({
-        DistributionConfig: Match.objectLike({
-          Enabled: true,
-          // Verify origins are configured (S3 and API Gateway)
-          Origins: Match.arrayWith([
-            Match.objectLike({
-              DomainName: Match.anyValue(),
-            }),
-          ]),
-          // Verify HTTPS redirect and cache behaviors
-          DefaultCacheBehavior: Match.objectLike({
-            ViewerProtocolPolicy: Match.stringLikeRegexp(
-              'redirect-to-https|https-only'
-            ),
-            TargetOriginId: Match.anyValue(),
-            Compress: true,
-            AllowedMethods: Match.anyValue(),
-            CachedMethods: Match.anyValue(),
-          }),
-        }),
-      })
-    );
-
-    // Group: S3 bucket with security best practices
-    template.resourceCountIs('AWS::S3::Bucket', 1);
-    template.hasResourceProperties(
-      'AWS::S3::Bucket',
-      Match.objectLike({
-        PublicAccessBlockConfiguration: {
-          BlockPublicAcls: true,
-          BlockPublicPolicy: true,
-          IgnorePublicAcls: true,
-          RestrictPublicBuckets: true,
-        },
-      })
-    );
-    // Note: S3 bucket encryption is not explicitly configured by NitroSite construct.
-    // AWS S3 applies default encryption (SSE-S3) if not specified, but best practice
-    // is to explicitly configure encryption in IaC.
+  afterAll(() => {
+    // Clean up base tmp directory
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('should create Lambda function with API Gateway for server-side rendering', async () => {
-    const app = new App({ mode: 'deploy' });
-    app.stack(Main);
+  beforeEach(async () => {
+    // Create unique temp directory for this test
+    testAppPath = fs.mkdtempSync(path.join(tmpDir, 'app-'));
 
-    await app.finish();
-
-    const template = Template.fromStack(getStack(Main));
-
-    // Group: Lambda function configuration
-    template.hasResourceProperties(
-      'AWS::Lambda::Function',
-      Match.objectLike({
-        Runtime: Match.stringLikeRegexp('nodejs'),
-        Handler: Match.stringLikeRegexp('index.handler'),
-        Description: Match.stringLikeRegexp('Server handler'),
-      })
-    );
-
-    // Group: API Gateway integration
-    template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
-    template.hasResourceProperties(
-      'AWS::ApiGateway::RestApi',
-      Match.objectLike({
-        EndpointConfiguration: Match.objectLike({
-          Types: ['REGIONAL'],
-        }),
-      })
-    );
-
-    template.hasResourceProperties(
-      'AWS::ApiGateway::Method',
-      Match.objectLike({
-        HttpMethod: 'ANY',
-      })
-    );
+    // Create stub Nitro output structure
+    createStubNitroOutput(testAppPath);
   });
 
-  it('should configure IAM permissions for S3 and CloudFront invalidation', async () => {
-    const app = new App({ mode: 'deploy' });
-    app.stack(Main);
-
-    await app.finish();
-
-    const template = Template.fromStack(getStack(Main));
-
-    // Group: IAM role with Lambda trust policy
-    template.hasResourceProperties(
-      'AWS::IAM::Role',
-      Match.objectLike({
-        AssumeRolePolicyDocument: Match.objectLike({
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Effect: 'Allow',
-              Principal: Match.objectLike({
-                Service: 'lambda.amazonaws.com',
-              }),
-              Action: 'sts:AssumeRole',
-            }),
-          ]),
-        }),
-      })
-    );
-
-    // Group: S3 access permissions
-    template.hasResourceProperties(
-      'AWS::IAM::Policy',
-      Match.objectLike({
-        PolicyDocument: Match.objectLike({
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: Match.arrayWith([Match.stringLikeRegexp('s3:GetObject')]),
-              Effect: 'Allow',
-            }),
-          ]),
-        }),
-      })
-    );
-
-    // Group: CloudFront invalidation permissions
-    template.hasResourceProperties(
-      'AWS::IAM::Policy',
-      Match.objectLike({
-        PolicyDocument: Match.objectLike({
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: 'cloudfront:CreateInvalidation',
-              Effect: 'Allow',
-              Resource: Match.objectLike({
-                'Fn::Join': Match.arrayWith([
-                  Match.arrayWith([
-                    Match.stringLikeRegexp('arn:'),
-                    Match.stringLikeRegexp('cloudfront'),
-                  ]),
-                ]),
-              }),
-            }),
-          ]),
-        }),
-      })
-    );
+  afterEach(() => {
+    // Clean up test-specific directories after each test
+    if (fs.existsSync(testAppPath)) {
+      fs.rmSync(testAppPath, { recursive: true, force: true });
+    }
   });
 
   it('should export MainSiteUrl as stack output', async () => {
     const app = new App({ mode: 'deploy' });
-    app.stack(Main);
+    const MockStack = (ctx: StackContext) =>
+      Main(ctx, { appPath: testAppPath });
+    app.stack(MockStack);
 
     await app.finish();
 
-    const template = Template.fromStack(getStack(Main));
+    const template = Template.fromStack(getStack(MockStack));
 
     // Verify stack output exists
     template.hasOutput('MainSiteUrl', {});
