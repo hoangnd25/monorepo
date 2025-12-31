@@ -74,9 +74,9 @@ jobs:
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@56d6a583f00f6bad6d19d91d53a7bc3b8143d0e9 # v5.1.1
         with:
-          role-to-assume: arn:aws:iam::883105811557:role/github
-          role-session-name: GitHubActions
           aws-region: us-west-2
+          role-to-assume: arn:aws:iam::883105811557:role/github # wdi-dev
+          role-duration-seconds: 1800
 
       - name: 📥 Monorepo install
         uses: ./.github/actions/pnpm-install
