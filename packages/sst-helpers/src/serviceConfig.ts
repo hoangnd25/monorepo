@@ -23,8 +23,7 @@ export const SharedResource = {
     INTERNAL_API_ID: 'internal-api-id',
   },
   auth: {
-    USER_POOL_ID: 'user-pool-id',
-    USER_POOL_CLIENT_ID: 'user-pool-client-id',
+    INTERNAL_API_URL: 'internal-api-url',
   },
 } as const satisfies Record<ServiceNameValue, Record<string, string>>;
 

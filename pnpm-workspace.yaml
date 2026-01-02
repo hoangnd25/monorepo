@@ -5,11 +5,13 @@ packages:
   - packages/*
 
 catalog:
+  '@aws-sdk/client-cognito-identity-provider': ^3.895.0
   '@aws-sdk/client-dynamodb': ^3.895.0
   '@aws-sdk/client-kms': ^3.895.0
   '@aws-sdk/client-ses': ^3.895.0
   '@aws-sdk/credential-provider-node': ^3.895.0
   '@aws-sdk/lib-dynamodb': ^3.895.0
+  'aws-sdk-client-mock': ^4.1.0
   '@orpc/client': ^1.13.2
   '@orpc/contract': ^1.13.2
   '@orpc/openapi': ^1.13.2

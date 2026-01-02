@@ -2,6 +2,8 @@
 
 Authentication service using AWS Cognito with custom authentication flows and an internal API for inter-service communication.
 
+> **📚 Comprehensive Guide**: See [Authentication Architecture](../../docs/auth.md) for detailed design principles, service communication patterns, and infrastructure setup.
+
 ## Overview
 
 This service provides:
@@ -24,11 +26,13 @@ See [Internal API Documentation](../../docs/internal-api.md) for details on:
 
 ```typescript
 // Consuming the auth API from another service
-import { createORPCClient } from '@orpc/client';
+import { createInternalApiClient } from '@client/internal-api';
 import { contract } from '@contract/internal-api/auth';
 
-const client = createORPCClient(contract, {
-  baseURL: process.env.AUTH_API_URL,
+const client = createInternalApiClient({
+  contract,
+  baseUrl: process.env.AUTH_INTERNAL_API_URL!,
+  // AWS Signature V4 signing enabled by default
 });
 
 const user = await client.user.get({ id: 'user-123' });

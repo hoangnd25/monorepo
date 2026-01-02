@@ -15,9 +15,12 @@
     "lint": "eslint \"**/*.ts*\"",
     "type-check": "tsc --noEmit",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:unit": "vitest --config vitest.unit.config.ts",
+    "test:unit:run": "vitest run --config vitest.unit.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "catalog:",
     "@aws-sdk/client-dynamodb": "catalog:",
     "@aws-sdk/client-kms": "catalog:",
     "@aws-sdk/client-ses": "catalog:",
@@ -36,6 +39,7 @@
     "@test/local-dynamodb": "workspace:*",
     "@types/aws-lambda": "catalog:",
     "@types/node": "catalog:",
+    "aws-sdk-client-mock": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
