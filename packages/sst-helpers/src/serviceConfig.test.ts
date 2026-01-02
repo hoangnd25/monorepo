@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { initProject } from 'sst/project.js';
-import { App, getStack, StackContext } from 'sst/constructs';
+import { App, getStack, StackContext, Stack } from 'sst/constructs';
 import { Construct } from 'constructs';
 import {
   createParameter,
   getParameterValue,
   getParameterArn,
+  getParameterName,
   SharedResource,
   ServiceName,
   ServicePath,
@@ -313,10 +314,7 @@ describe('serviceConfig', () => {
     });
 
     it('should have auth resources', () => {
-      expect(SharedResource.auth.USER_POOL_ID).toBe('user-pool-id');
-      expect(SharedResource.auth.USER_POOL_CLIENT_ID).toBe(
-        'user-pool-client-id'
-      );
+      expect(SharedResource.auth.INTERNAL_API_URL).toBe('internal-api-url');
     });
   });
 
@@ -324,6 +322,53 @@ describe('serviceConfig', () => {
     it('should have correct service names', () => {
       expect(ServiceName.SHARED_INFRA).toBe('shared-infra');
       expect(ServiceName.AUTH).toBe('auth');
+    });
+  });
+
+  describe('getParameterName', () => {
+    beforeEach(() => {
+      vi.mocked(validateServiceDependency).mockReset();
+    });
+
+    it('should return parameter name with service/key options', () => {
+      const app = new App({ mode: 'deploy' });
+      const stack = new Stack(app, 'test-stack');
+      const ctx = { stack, app };
+
+      const paramName = getParameterName(ctx, {
+        service: 'shared-infra',
+        key: 'internal-api-url',
+      });
+
+      expect(paramName).toBe('/service/shared-infra/dev/internal-api-url');
+    });
+
+    it('should return parameter name with path option', () => {
+      const app = new App({ mode: 'deploy' });
+      const stack = new Stack(app, 'test-stack');
+      const ctx = { stack, app };
+
+      const paramName = getParameterName(ctx, {
+        path: 'shared-infra/internal-api-url',
+      });
+
+      expect(paramName).toBe('/service/shared-infra/dev/internal-api-url');
+    });
+
+    it('should validate service dependency', () => {
+      vi.mocked(validateServiceDependency).mockImplementation(() => {
+        throw new Error('Missing service dependency');
+      });
+
+      const app = new App({ mode: 'deploy' });
+      const stack = new Stack(app, 'test-stack');
+      const ctx = { stack, app };
+
+      expect(() =>
+        getParameterName(ctx, {
+          path: 'shared-infra/internal-api-url' as any, // Use valid path but mock validation to fail
+        })
+      ).toThrow('Missing service dependency');
     });
   });
 });

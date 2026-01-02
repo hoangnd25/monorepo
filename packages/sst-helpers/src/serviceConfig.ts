@@ -90,7 +90,7 @@ const resolveServiceKey = <S extends ServiceNameValue>(
  * Generates a consistent SSM parameter path
  * Format: /service/<service-name>/<stage>/<resource-key>
  */
-const getParameterName = (
+const _internal_getParameterName = (
   stage: string,
   serviceName: ServiceNameValue,
   key: string
@@ -126,7 +126,7 @@ export const createParameter = <S extends ServiceNameValue>(
   const id = `ServiceConfig-${service}-${key}`.replace(/[^a-zA-Z0-9-]/g, '-');
 
   return new StringParameter(options.scope ?? stack, id, {
-    parameterName: getParameterName(app.stage, service, key),
+    parameterName: _internal_getParameterName(app.stage, service, key),
     stringValue: options.value,
   });
 };
@@ -165,7 +165,7 @@ export const getParameterValue = <S extends ServiceNameValue>(
 
   return StringParameter.valueForStringParameter(
     options.scope ?? stack,
-    getParameterName(app.stage, service, key)
+    _internal_getParameterName(app.stage, service, key)
   );
 };
 
@@ -196,14 +196,38 @@ export const getParameterArn = <S extends ServiceNameValue>(
   context: StackContext,
   options: GetParameterOptions<S>
 ): string => {
+  const targetRegion = options.region ?? Aws.REGION;
+  const parameterName = getParameterName(context, options);
+
+  return `arn:${Aws.PARTITION}:ssm:${targetRegion}:${Aws.ACCOUNT_ID}:parameter${parameterName}`;
+};
+
+/**
+ * Generates a consistent SSM parameter path
+ * Format: /service/<service-name>/<stage>/<resource-key>
+ *
+ * @example
+ * // Using service/key
+ * const path = getParameterName(ctx, {
+ *   service: 'shared-infra',
+ *   key: 'internal-api-url',
+ * });
+ *
+ * @example
+ * // Using path
+ * const path = getParameterName(ctx, {
+ *   path: 'shared-infra/internal-api-url',
+ * });
+ */
+export const getParameterName = <S extends ServiceNameValue>(
+  context: StackContext,
+  options: GetParameterOptions<S>
+): string => {
   const { app } = context;
   const { service, key } = resolveServiceKey(options);
 
   // Validate service dependency
   validateServiceDependency(service);
 
-  const targetRegion = options.region ?? Aws.REGION;
-  const parameterName = getParameterName(app.stage, service, key);
-
-  return `arn:${Aws.PARTITION}:ssm:${targetRegion}:${Aws.ACCOUNT_ID}:parameter${parameterName}`;
+  return _internal_getParameterName(app.stage, service, key);
 };
