@@ -88,12 +88,19 @@ The URL does **not** contain a session token. Sessions are managed by Cognito.
 
 Magic links work even when opened in a different browser or device:
 
-- **Same-browser**: Session is retrieved from a cookie stored after `initiateMagicLink`
-- **Cross-browser**: Auth service detects missing session and calls `InitiateAuth` to get a new one
+- **Same-browser**: Session is retrieved from an **HttpOnly cookie** set by the server after `initiateMagicLink`
+- **Cross-browser**: Client detects missing session (server returns error) and calls `initiateMagicLink` again to get a new session
 
-The `completeMagicLink` API accepts an optional `session` parameter:
-- If provided: Uses the existing session for `RespondToAuthChallenge`
-- If omitted: Initiates a new auth flow to obtain a fresh session
+**Cookie Security**:
+
+- Cookies are set **server-side** with `HttpOnly`, `Secure`, and `SameSite=Strict` attributes
+- Session tokens are inaccessible to JavaScript (prevents XSS attacks)
+- Cookies are automatically deleted after successful authentication (one-time use)
+
+The `completeMagicLink` server function reads the session from cookies:
+
+- If cookie exists: Uses the existing session for `RespondToAuthChallenge`
+- If cookie missing: Returns error, triggering cross-browser flow in client
 
 ### Security Features
 
@@ -102,6 +109,9 @@ The `completeMagicLink` API accepts an optional `session` parameter:
 - **One-time use** - Each link can only be used once
 - **Rate limiting** - Minimum 1 minute between link requests (configurable)
 - **Origin validation** - Only allowed origins can request magic links
+- **HttpOnly cookies** - Session tokens stored in HttpOnly cookies (inaccessible to JavaScript)
+- **Secure cookies** - HTTPS only transmission (prevents man-in-the-middle attacks)
+- **SameSite=Strict** - CSRF protection via strict same-site cookie policy
 
 ### Infrastructure Components
 

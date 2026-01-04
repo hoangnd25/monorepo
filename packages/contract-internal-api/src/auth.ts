@@ -36,12 +36,15 @@ export const initiateMagicLink = oc
 /**
  * Contract for completing magic link authentication
  * Verifies the magic link and returns JWT tokens
+ *
+ * NOTE: Session is required. For cross-browser scenarios, main-ui must first
+ * call initiateMagicLink to obtain a fresh session before calling this endpoint.
  */
 export const completeMagicLink = oc
   .route({ method: 'POST', path: '/magic-link/complete' })
   .input(
     z.object({
-      session: z.string(),
+      session: z.string(), // Required - main-ui handles cross-browser fallback
       secret: z.string(),
     })
   )

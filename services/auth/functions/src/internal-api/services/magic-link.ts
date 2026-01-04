@@ -5,6 +5,7 @@ import {
   type AuthFlowType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { calculateSecretHash } from '../utils/cognito.ts';
+import { getCognitoConfig } from '../utils/cognito-config.ts';
 
 // ============================================================================
 // Types
@@ -27,7 +28,7 @@ export interface InitiateMagicLinkOutput {
 }
 
 export interface CompleteMagicLinkInput {
-  session: string;
+  session: string; // Required - main-ui handles cross-browser before calling
   secret: string;
   redirectUri?: string;
 }
@@ -127,6 +128,9 @@ export class MagicLinkService {
    *
    * This verifies the magic link secret and completes the authentication,
    * returning JWT tokens if successful.
+   *
+   * NOTE: Session is required. For cross-browser scenarios, main-ui must first
+   * call initiateMagicLink to obtain a fresh session before calling this method.
    */
   async complete(
     input: CompleteMagicLinkInput & { redirectUri?: string }
@@ -134,7 +138,7 @@ export class MagicLinkService {
     const { session, secret, redirectUri } = input;
 
     try {
-      // Extract email from session (we decode it from the secret's message part)
+      // Extract email from secret for SECRET_HASH calculation
       const [messageB64] = secret.split('.');
       const message = JSON.parse(
         Buffer.from(messageB64, 'base64url').toString()
@@ -148,7 +152,7 @@ export class MagicLinkService {
         this.config.clientSecret
       );
 
-      // Respond to the magic link challenge
+      // Respond to the magic link challenge with the provided session
       const response = await this.cognito.send(
         new RespondToAuthChallengeCommand({
           ClientId: this.config.clientId,
@@ -196,22 +200,13 @@ export class MagicLinkService {
 // ============================================================================
 
 /**
- * Create a MagicLinkService instance from environment variables
+ * Create a MagicLinkService instance from SST Config
+ *
+ * This fetches the complete Cognito configuration from SST Config:
+ * - User pool ID and client ID from Config.Parameter (stable, cached in Lambda env)
+ * - Client secret from Cognito API via getCognitoConfig (with 5-min cache)
  */
-export function createMagicLinkService(): MagicLinkService {
-  const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const clientId = process.env.COGNITO_CLIENT_ID;
-  const clientSecret = process.env.COGNITO_CLIENT_SECRET;
-
-  if (!userPoolId || !clientId || !clientSecret) {
-    throw new Error(
-      'Missing required environment variables: COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, or COGNITO_CLIENT_SECRET'
-    );
-  }
-
-  return new MagicLinkService({
-    userPoolId,
-    clientId,
-    clientSecret,
-  });
+export async function createMagicLinkService(): Promise<MagicLinkService> {
+  const config = await getCognitoConfig();
+  return new MagicLinkService(config);
 }

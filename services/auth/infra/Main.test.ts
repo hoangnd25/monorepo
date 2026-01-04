@@ -1,5 +1,5 @@
 import { describe, it, beforeAll, vi } from 'vitest';
-import { Template, Match } from 'aws-cdk-lib/assertions';
+import { Template, Match, Capture } from 'aws-cdk-lib/assertions';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { initProject } from 'sst/project.js';
 import { App, getStack, StackContext } from 'sst/constructs';
@@ -56,6 +56,45 @@ describe('Main stack', () => {
       Match.objectLike({
         IntegrationType: 'AWS_PROXY',
         PayloadFormatVersion: '2.0',
+      })
+    );
+
+    // Capture the Lambda's role to verify IAM policy is linked correctly
+    const roleCapture = new Capture();
+    template.hasResourceProperties(
+      'AWS::Lambda::Function',
+      Match.objectLike({
+        Handler: 'functions/src/internal-api/handler.handler',
+        Role: roleCapture,
+      })
+    );
+
+    // Extract role logical ID from Lambda's role reference
+    const roleLogicalId = roleCapture.asObject()['Fn::GetAtt'][0];
+
+    // Verify IAM policy is attached to Lambda's role with scoped Cognito permissions
+    template.hasResourceProperties(
+      'AWS::IAM::Policy',
+      Match.objectLike({
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Effect: 'Allow',
+              Action: [
+                'cognito-idp:DescribeUserPoolClient',
+                'cognito-idp:InitiateAuth',
+                'cognito-idp:RespondToAuthChallenge',
+              ],
+              Resource: {
+                'Fn::GetAtt': Match.arrayWith([
+                  Match.stringLikeRegexp('UserPool.*'),
+                  'Arn',
+                ]),
+              },
+            }),
+          ]),
+        }),
+        Roles: [{ Ref: roleLogicalId }],
       })
     );
 

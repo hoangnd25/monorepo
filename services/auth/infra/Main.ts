@@ -1,12 +1,29 @@
-import { Api, StackContext } from 'sst/constructs';
+import { Api, Config, StackContext } from 'sst/constructs';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { serviceConfig } from '@lib/sst-helpers';
 import { UserPool } from './cognito/UserPool.ts';
 import { CognitoTriggers } from './cognito/CognitoTriggers.ts';
 import { MagicLink } from './cognito/MagicLink.ts';
 
 export function Main(context: StackContext) {
-  const { stack } = context;
+  const { stack, app } = context;
+
+  // Determine allowed origins based on stage
+  const mainUiUrl =
+    app.stage === 'production'
+      ? 'https://app.example.com' // TODO: Replace with your production domain
+      : `https://${app.stage}.example.com`; // TODO: Replace with your staging domain pattern
+
+  // For local development, allow localhost
+  // For non-production stages, also allow localhost for local testing
+  const allowedOrigins =
+    app.stage === 'local'
+      ? ['http://localhost:3000']
+      : app.stage === 'production'
+        ? [mainUiUrl]
+        : [mainUiUrl, 'http://localhost:3000'];
+
   const mainUserPool = new UserPool(stack, 'main', {
     clients: {
       main: {
@@ -14,6 +31,13 @@ export function Main(context: StackContext) {
       },
     },
   });
+
+  // Get the user pool client
+  const userPoolClient = mainUserPool.clients.get('main');
+
+  if (!userPoolClient) {
+    throw new Error('UserPoolClient main not found');
+  }
 
   // Create Cognito Lambda triggers for custom auth flow
   const cognitoTriggers = new CognitoTriggers(stack, 'cognito-triggers', {
@@ -25,10 +49,7 @@ export function Main(context: StackContext) {
   // Configure magic link authentication
   const magicLink = new MagicLink(stack, 'magic-link', {
     cognitoTriggers,
-    allowedOrigins: [
-      // TODO: Replace with your actual app origins
-      'https://app.example.com',
-    ],
+    allowedOrigins,
     ses: {
       // TODO: Replace with your verified SES email address
       fromAddress: 'noreply@example.com',
@@ -38,6 +59,17 @@ export function Main(context: StackContext) {
     // Optional configuration
     // expiryDuration: Duration.minutes(15),
     // minimumInterval: Duration.minutes(1),
+  });
+
+  // Create SST Config parameters for Cognito configuration
+  const cognitoUserPoolId = new Config.Parameter(
+    stack,
+    'COGNITO_USER_POOL_ID',
+    { value: mainUserPool.userPool.userPoolId }
+  );
+
+  const cognitoClientId = new Config.Parameter(stack, 'COGNITO_CLIENT_ID', {
+    value: userPoolClient.userPoolClientId,
   });
 
   // Import the shared internal API from shared-infra service
@@ -67,6 +99,18 @@ export function Main(context: StackContext) {
         function: {
           handler: 'functions/src/internal-api/handler.handler',
           runtime: 'nodejs22.x',
+          bind: [cognitoUserPoolId, cognitoClientId],
+          permissions: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'cognito-idp:DescribeUserPoolClient',
+                'cognito-idp:InitiateAuth',
+                'cognito-idp:RespondToAuthChallenge',
+              ],
+              resources: [mainUserPool.userPool.userPoolArn],
+            }),
+          ],
         },
       },
     },
@@ -82,6 +126,8 @@ export function Main(context: StackContext) {
   stack.addOutputs({
     InternalApiUrl: internalApi.url + '/auth',
     UserPoolId: mainUserPool.userPool.userPoolId,
+    UserPoolClientId: userPoolClient.userPoolClientId,
     MagicLinkSecretsTable: magicLink.secretsTable.tableName,
+    AllowedOrigins: allowedOrigins.join(','),
   });
 }

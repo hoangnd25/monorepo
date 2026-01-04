@@ -1,15 +1,30 @@
-# Agent Guidelines for TanStack Start Monorepo
+# Agent Guidelines
+
+## Project Overview
+
+Monorepo for a full-stack application with:
+
+- **Frontend**: TanStack Start (React 19, file-based routing)
+- **Backend**: AWS Lambda via SST v2
+- **Infrastructure**: SST v2 + AWS CDK for infrastructure as code (IAC). Resources are deployed to AWS
+- **Inter-service communication**: ORPC (contract-first, type-safe RPC with AWS Signature V4)
+- **Monorepo**: Turborepo + pnpm workspaces with catalog
+- **Local dev/test**: Resources are deployed to AWS for testing in a ephemeral/preview stage
 
 ## Commands
 
 - **Install**: `pnpm install` (requires Node.js >=22, pnpm >=10.26.2)
-- **Dev**: `pnpm dev` (all services) or `cd services/main-ui/app && pnpm dev` (single service)
+- **Dev**: `pnpm dev` (all services) or `cd services/main-ui/app && pnpm dev` (single service). **IMPORTANT**: For SST services (`services/auth`, `services/main-api`), running `pnpm dev` requires AWS credentials and will prompt for a stage name. Always ask the user for both the stage name and AWS credentials method (e.g., aws-vault profile) before running SST dev commands.
 - **Build**: `pnpm build` (uses Turborepo, builds all packages/services including type check)
-- **Deploy**: `cd services/main-ui && pnpm run deploy -- --stage <stage>` (SST deployment, use current branch for stage)
+- **Deploy**: `cd services/main-ui && pnpm run deploy -- --stage <stage>` (SST deployment, use current branch for stage, requires AWS credentials)
 - **Lint**: `pnpm lint` (all) or `cd services/main-ui/app && pnpm lint` (single package)
 - **Type Check**: `pnpm type-check` (all) or `cd services/main-ui/app && pnpm type-check` (single)
 - **Format**: `pnpm format` (write), `pnpm format:check` (check only)
 - **Test**: `cd services/main-ui/app && pnpm test` (watch mode), `pnpm test:run` (single run), `vitest run src/path/to/file.test.tsx` (single file)
+
+## AWS Credentials
+
+For SST services requiring AWS credentials, the user may use aws-vault or other credential methods. Always ask which AWS profile/method to use before running commands that require credentials.
 
 ## Code Style
 

@@ -72,32 +72,89 @@ The main-ui service **does NOT have direct access to Cognito**. All authenticati
 
 ## Routes
 
-| Route                | Description                     |
-| -------------------- | ------------------------------- |
-| `/`                  | Home page                       |
-| `/about`             | About page                      |
-| `/login`             | Login page with magic link form |
-| `/login/check-email` | Email confirmation page         |
-| `/auth/callback`     | Magic link callback handler     |
+| Route                | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| `/`                  | Home page                                                   |
+| `/about`             | About page                                                  |
+| `/login`             | Login page with magic link form                             |
+| `/login/check-email` | Email confirmation page                                     |
+| `/auth/callback`     | Magic link callback handler (server reads HttpOnly cookies) |
+
+### Magic Link Flow
+
+The magic link authentication flow uses **server-side cookie management**:
+
+1. **Login route** (`/login`):
+   - User submits email
+   - Server function calls auth API to initiate magic link
+   - **Server sets HttpOnly cookies** for session and redirect path
+   - User redirected to `/login/check-email`
+
+2. **Callback route** (`/auth/callback`):
+   - User clicks magic link in email
+   - Hash fragment parsed client-side for secret
+   - Server function reads session from **HttpOnly cookie**
+   - Server completes authentication with auth API
+   - **Server deletes HttpOnly cookies** (one-time use)
+   - Tokens stored in localStorage, user redirected
+
+**Cross-browser support**: If magic link is opened in a different browser (no cookie), the client detects the error and initiates a new auth session.
+
+See [Magic Link Testing Reference](../../docs/magic-link-testing-reference.md) for detailed flow diagrams.
 
 ## Server Functions
 
-Server functions in `app/src/server/` run on the server and can call internal APIs:
+Server functions in `app/src/server/` run on the server and can call internal APIs. They also handle **secure cookie management** for authentication.
+
+### Authentication Server Functions
 
 ```typescript
 // app/src/server/auth.ts
 import { createServerFn } from '@tanstack/react-start';
-import { authClient } from '~/clients/auth';
+import { setCookie } from 'vinxi/http';
+import { authClient } from '~/internal-api/auth';
 
-export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email() }))
+export const initiateMagicLink = createServerFn({ method: 'POST' })
+  .inputValidator((data) => data)
   .handler(async ({ data }) => {
-    const user = await authClient.user.get({ id: 'user-123' });
-    return { success: true, user };
+    const response = await authClient.magicLink.initiate({
+      email: data.email,
+      redirectUri: data.redirectUri,
+    });
+
+    // Set HttpOnly, Secure cookies for session management
+    setCookie('magicLinkSession', response.session, {
+      httpOnly: true, // Prevents XSS - inaccessible to JavaScript
+      secure: true, // HTTPS only
+      sameSite: 'strict', // CSRF protection
+      path: '/',
+      maxAge: 900, // 15 minutes
+    });
+
+    return { success: true };
   });
 ```
 
-See [Internal API docs](../../docs/internal-api.md) for more details.
+### Cookie Security
+
+**All authentication cookies are managed server-side** with the following security attributes:
+
+| Attribute  | Value      | Benefit                                                      |
+| ---------- | ---------- | ------------------------------------------------------------ |
+| `httpOnly` | `true`     | Prevents XSS attacks - cookies inaccessible to JavaScript    |
+| `secure`   | `true`     | HTTPS-only transmission - prevents man-in-the-middle attacks |
+| `sameSite` | `'strict'` | CSRF protection - cookies only sent to same-site requests    |
+| `maxAge`   | `900`      | 15-minute expiry - time-limited session tokens               |
+
+**Why server-side cookie management?**
+
+- ✅ Session tokens never exposed to client-side JavaScript
+- ✅ HttpOnly flag prevents XSS attacks from stealing tokens
+- ✅ Secure flag ensures cookies only sent over HTTPS
+- ✅ SameSite=Strict prevents CSRF attacks
+- ✅ SSR compatible - cookies work during server rendering
+
+See [Internal API docs](../../docs/internal-api.md) and [Auth docs](../../docs/auth.md) for more details.
 
 ## Development
 
