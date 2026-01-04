@@ -293,9 +293,41 @@ sequenceDiagram
     Frontend->>User: "You are signed in!"
 ```
 
-### Complete Sign-In Flow (Different Browser)
+### Complete Sign-In Flow (Different Browser/Device)
 
-Similar to above, but without pre-existing session. User must initiate new auth with InitiateAuth first.
+When a user clicks a magic link in a different browser or device than where they requested it, there is no stored session available. The flow handles this by initiating a new auth session:
+
+```mermaid
+sequenceDiagram
+    User->>Frontend: Open magic link
+    Frontend->>Browser Storage: Load session
+    Browser Storage->>Frontend: null
+    Frontend->>Cognito: InitiateAuth (CUSTOM_AUTH)
+    Cognito->>DefineAuth Lambda: Invoke
+    DefineAuth Lambda->>Cognito: Next: CUSTOM_CHALLENGE
+    Cognito->>CreateAuthChallenge Lambda: Invoke
+    CreateAuthChallenge Lambda->>Cognito: Challenge: PROVIDE_AUTH_PARAMETERS
+    Cognito->>Frontend: Session, Challenge
+    Frontend->>Cognito: RespondToAuthChallenge: secret hash
+    Note right of Frontend: clientMetadata: alreadyHaveMagicLink=yes
+    Cognito->>VerifyAnswer Lambda: Invoke
+    VerifyAnswer Lambda->>DynamoDB: Delete magic-link metadata (atomic)
+    VerifyAnswer Lambda->>KMS: Download public key
+    VerifyAnswer Lambda->>VerifyAnswer Lambda: Verify signature
+    VerifyAnswer Lambda->>Cognito: Answer correct
+    Cognito->>DefineAuth Lambda: Invoke
+    DefineAuth Lambda->>Cognito: Succeed Auth
+    Cognito->>Frontend: JWTs
+    Frontend->>Browser Storage: Store JWTs
+    Frontend->>User: "You are signed in!"
+```
+
+**Key Points:**
+
+- When no session is found in storage, `InitiateAuth` is called to start a new auth flow
+- The `PROVIDE_AUTH_PARAMETERS` challenge returns a fresh session
+- The `alreadyHaveMagicLink: 'yes'` metadata in `RespondToAuthChallenge` tells the flow to verify the existing secret rather than send a new email
+- The secret from the URL is validated against DynamoDB and KMS signature
 
 ### Magic Link Security
 

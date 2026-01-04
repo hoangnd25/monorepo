@@ -461,7 +461,81 @@ The auth service implements secure passwordless authentication using Magic Links
 - **Origin validation** - Only allowed origins can request magic links
 - **No user data in link** - Only cryptographic signature in URL
 
-See [Auth Reference Architecture](./auth-reference-architecture.md) for detailed Magic Link flow diagrams.
+### Magic Link URL Structure
+
+Magic links use hash fragments (not query parameters) to pass the secret:
+
+```
+https://app.example.com/auth/callback#<message.base64url>.<signature.base64url>
+```
+
+Where `message` contains:
+
+```json
+{
+  "userName": "user@example.com",
+  "iat": 1234567890,
+  "exp": 1234568790
+}
+```
+
+**Important**: The URL does not contain a session token. Sessions are managed by Cognito and must be stored separately (e.g., in cookies) for same-browser callback scenarios.
+
+### Magic Link Callback Flow
+
+Our implementation maintains service encapsulation: main-ui calls the auth service internal API, which handles all Cognito interactions.
+
+#### Same-Browser Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant MainUI as main-ui (Frontend)
+    participant AuthAPI as Auth Service (Internal API)
+    participant Cognito
+
+    User->>MainUI: Click magic link in email
+    MainUI->>MainUI: Parse hash fragment (secret)
+    MainUI->>MainUI: Read session from cookie
+    MainUI->>AuthAPI: completeMagicLink({ session, secret })
+    AuthAPI->>Cognito: RespondToAuthChallenge (session + secret)
+    Cognito->>AuthAPI: JWTs
+    AuthAPI->>MainUI: Return tokens
+    MainUI->>MainUI: Store tokens, clean up cookie
+    MainUI->>User: Redirect to app
+```
+
+#### Cross-Browser Flow
+
+When users open a magic link in a different browser than where they requested it:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant MainUI as main-ui (Frontend)
+    participant AuthAPI as Auth Service (Internal API)
+    participant Cognito
+
+    User->>MainUI: Click magic link in email (different browser)
+    MainUI->>MainUI: Parse hash fragment (secret)
+    MainUI->>MainUI: No session cookie found
+    MainUI->>AuthAPI: completeMagicLink({ secret }) - no session
+    AuthAPI->>AuthAPI: Detect missing session
+    AuthAPI->>Cognito: InitiateAuth (CUSTOM_AUTH)
+    Cognito->>AuthAPI: New session token
+    AuthAPI->>Cognito: RespondToAuthChallenge (new session + secret)
+    Cognito->>AuthAPI: JWTs
+    AuthAPI->>MainUI: Return tokens
+    MainUI->>MainUI: Store tokens
+    MainUI->>User: Redirect to app
+```
+
+**Key Implementation Details:**
+
+1. **Session storage**: After `initiateMagicLink`, store the session in a cookie (not sessionStorage)
+2. **Optional session parameter**: The `completeMagicLink` API accepts an optional `session`
+3. **Cross-browser detection**: Auth service checks if session is provided; if not, calls `InitiateAuth`
+4. **Service encapsulation**: main-ui never calls Cognito directly
 
 ## Related Documentation
 

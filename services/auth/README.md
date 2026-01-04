@@ -74,6 +74,27 @@ Magic Links provide a secure, passwordless authentication method where users rec
 4. User clicks link to authenticate
 5. System verifies signature and issues Cognito tokens
 
+### URL Structure
+
+Magic links use hash fragments to pass the secret:
+
+```
+https://app.example.com/auth/callback#<message.base64url>.<signature.base64url>
+```
+
+The URL does **not** contain a session token. Sessions are managed by Cognito.
+
+### Cross-Browser Support
+
+Magic links work even when opened in a different browser or device:
+
+- **Same-browser**: Session is retrieved from a cookie stored after `initiateMagicLink`
+- **Cross-browser**: Auth service detects missing session and calls `InitiateAuth` to get a new one
+
+The `completeMagicLink` API accepts an optional `session` parameter:
+- If provided: Uses the existing session for `RespondToAuthChallenge`
+- If omitted: Initiates a new auth flow to obtain a fresh session
+
 ### Security Features
 
 - **RSA-2048 KMS signing** - Links are signed with AWS KMS using RSASSA_PSS_SHA_512
