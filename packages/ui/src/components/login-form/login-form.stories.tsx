@@ -199,6 +199,12 @@ export const WithLoginMethods: Story = {
     magicLink: {
       enabled: true,
       buttonText: 'Send me a login link',
+      successMessage: {
+        title: 'Check your email',
+        description: (email: string) =>
+          `We've sent a login link to ${email}. Click the link in the email to sign in.`,
+        actionText: 'try again',
+      },
     },
     onUsernameVerified: async (_username: string) => {
       // Simulate API call
@@ -209,8 +215,10 @@ export const WithLoginMethods: Story = {
         methods: ['password', 'magic-link'],
       };
     },
-    onMagicLinkRequest: (_username: string) => {
-      alert(`Magic link sent to ${_username}`);
+    onMagicLinkRequest: async (_username: string) => {
+      // Simulate sending magic link
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log(`Magic link sent to ${_username}`);
     },
   },
   render: (args) => (
@@ -220,7 +228,9 @@ export const WithLoginMethods: Story = {
         <Box fontSize="sm" color="gray.600">
           This story demonstrates async username verification. After entering a
           username, the form will verify it (simulated 1.5s delay) and show both
-          password and magic link options.
+          password and magic link options. Click &quot;Send me a login
+          link&quot; to see the success message and &quot;try again&quot;
+          functionality.
         </Box>
       </Box>
     </Box>
@@ -235,13 +245,21 @@ export const PasswordlessLogin: Story = {
     magicLink: {
       enabled: true,
       buttonText: 'Send magic link',
+      successMessage: {
+        title: 'Check your inbox',
+        description: (email: string) =>
+          `We sent a secure login link to ${email}`,
+        actionText: 'resend link',
+      },
     },
     onUsernameVerified: async (username: string) => {
       console.log('Username verified:', username);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return { methods: ['magic-link'] };
     },
-    onMagicLinkRequest: (username: string) => {
-      alert(`Magic link sent to ${username}!`);
+    onMagicLinkRequest: async (username: string) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      console.log(`Magic link sent to ${username}!`);
     },
   },
   render: (args) => (
@@ -251,7 +269,9 @@ export const PasswordlessLogin: Story = {
         <Box fontSize="sm" color="gray.600">
           This story demonstrates passwordless login using magic links only. The
           password field is completely disabled, and users can only authenticate
-          via magic link sent to their email.
+          via magic link sent to their email. Try clicking &quot;Send magic
+          link&quot; to see the custom success message and &quot;resend
+          link&quot; button.
         </Box>
       </Box>
     </Box>

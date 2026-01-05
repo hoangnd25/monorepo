@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { Box, Stack, VStack } from '../../chakra';
+import { Button, Stack, VStack } from '../../chakra';
 import { LoginHeader } from './login-header';
-import { LoginUsernameStep } from './login-username-step';
+import {
+  LoginUsernameStep,
+  type LoginMethod,
+  type LoginMethodsResponse,
+} from './login-username-step';
 import { LoginPasswordStep } from './login-password-step';
+import { LoginMagicLinkStep } from './login-magic-link-step';
+import { LoginMessage } from './login-message';
 import { LoginFooter } from './login-footer';
 import {
   LoginSocialProviders,
@@ -10,11 +16,11 @@ import {
 } from './login-social-providers';
 import { LoginDivider } from './login-divider';
 
-export type LoginMethod = 'password' | 'magic-link';
-
-export interface LoginMethodsResponse {
-  methods: LoginMethod[];
-  error?: string;
+export interface LoginSuccessMessage {
+  title: string;
+  description: string;
+  actionText?: string;
+  onAction?: () => void;
 }
 
 export interface LoginFormHeading {
@@ -26,6 +32,11 @@ export interface LoginFormHeading {
 export interface LoginFormMagicLink {
   enabled?: boolean;
   buttonText?: string;
+  successMessage?: {
+    title?: string;
+    description?: (email: string) => string;
+    actionText?: string;
+  };
 }
 
 export interface LoginFormSignUp {
@@ -60,7 +71,7 @@ export interface LoginFormButtons {
 
 export interface LoginFormProps {
   onSubmit?: (username: string, password: string) => void;
-  onMagicLinkRequest?: (username: string) => void;
+  onMagicLinkRequest?: (username: string) => Promise<void>;
   onForgotPassword?: () => void;
   onSignUp?: () => void;
   onValidateUsername?: (username: string) => string | undefined;
@@ -76,6 +87,7 @@ export interface LoginFormProps {
   isLoading?: boolean;
   passwordError?: string;
   defaultUsername?: string;
+  successMessage?: LoginSuccessMessage;
 }
 
 export function LoginForm({
@@ -90,10 +102,7 @@ export function LoginForm({
     title: 'Welcome back',
     subtitle: 'Sign in to your account to continue',
   },
-  magicLink = {
-    enabled: false,
-    buttonText: 'Send me a login link',
-  },
+  magicLink,
   signUp = {
     enabled: true,
     text: "Don't have an account?",
@@ -128,26 +137,34 @@ export function LoginForm({
   isLoading = false,
   passwordError,
   defaultUsername,
+  successMessage,
 }: LoginFormProps) {
-  const [step, setStep] = useState<'username' | 'password'>(
+  // Merge magic link defaults with deep merge for successMessage
+  const magicLinkConfig: LoginFormMagicLink = {
+    enabled: magicLink?.enabled ?? false,
+    buttonText: magicLink?.buttonText ?? 'Send me a login link',
+    successMessage: {
+      title: magicLink?.successMessage?.title ?? 'Check your email',
+      description:
+        magicLink?.successMessage?.description ??
+        ((email: string) =>
+          `We've sent a login link to ${email}. Click the link in the email to sign in.`),
+      actionText: magicLink?.successMessage?.actionText ?? 'try again',
+    },
+  };
+  const [step, setStep] = useState<'username' | 'password' | 'magic-link'>(
     defaultUsername ? 'password' : 'username'
   );
   const [usernameValue, setUsernameValue] = useState(defaultUsername || '');
-  const [currentUsernameError, setCurrentUsernameError] = useState<
-    string | undefined
-  >();
-  const [currentPasswordError, setCurrentPasswordError] = useState<
-    string | undefined
-  >();
-  const [isVerifyingUsername, setIsVerifyingUsername] = useState(false);
   const [availableMethods, setAvailableMethods] = useState<LoginMethod[]>([
     'password',
   ]);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Determine final available methods based on configuration and API response
   const finalAvailableMethods = availableMethods.filter((method) => {
     if (method === 'magic-link') {
-      return magicLink?.enabled !== false;
+      return magicLinkConfig?.enabled !== false;
     }
     if (method === 'password') {
       return password?.enabled !== false;
@@ -155,181 +172,215 @@ export function LoginForm({
     return true;
   });
 
-  const defaultValidateUsername = (value: string): string | undefined => {
-    if (!value || value.trim() === '') {
-      return `Please enter your ${username?.label?.toLowerCase() || 'username'}`;
-    }
-    return undefined;
-  };
+  const handleUsernameSubmit = (
+    username: string,
+    methods: LoginMethod[]
+  ): void => {
+    setUsernameValue(username);
+    setAvailableMethods(methods);
 
-  const validateUsername = (value: string): string | undefined => {
-    // Priority: onValidateUsername prop > username.validate > default validation
-    if (onValidateUsername) {
-      return onValidateUsername(value);
-    }
-    if (username?.validate) {
-      return username.validate(value);
-    }
-    return defaultValidateUsername(value);
-  };
-
-  const handleUsernameSubmit: React.FormEventHandler<HTMLFormElement> = async (
-    e
-  ) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const usernameInput = formData.get('username') as string;
-
-    const validationError = validateUsername(usernameInput);
-    if (validationError) {
-      setCurrentUsernameError(validationError);
-      return;
-    }
-
-    setCurrentUsernameError(undefined);
-    setUsernameValue(usernameInput);
-
-    // If onUsernameVerified callback is provided, call it to get available login methods
-    if (onUsernameVerified) {
-      setIsVerifyingUsername(true);
-      try {
-        const response = await onUsernameVerified(usernameInput);
-        if (response.error) {
-          setCurrentUsernameError(response.error);
-          setIsVerifyingUsername(false);
-          return;
-        }
-        // Check if methods array is empty
-        if (!response.methods || response.methods.length === 0) {
-          setCurrentUsernameError(
-            'This email is not registered. Please sign up first.'
-          );
-          setIsVerifyingUsername(false);
-          return;
-        }
-        setAvailableMethods(response.methods);
-        setIsVerifyingUsername(false);
-      } catch {
-        setCurrentUsernameError(
-          'We could not verify your email. Please try again.'
-        );
-        setIsVerifyingUsername(false);
-        return;
+    // After username verification, determine which step to show
+    // Filter methods based on configuration
+    const finalMethods = methods.filter((method) => {
+      if (method === 'magic-link') {
+        return magicLinkConfig?.enabled !== false;
       }
-    }
+      if (method === 'password') {
+        return password?.enabled !== false;
+      }
+      return true;
+    });
 
+    // Default to password if available, otherwise magic-link
+    if (finalMethods.includes('password')) {
+      setStep('password');
+    } else if (finalMethods.includes('magic-link')) {
+      setStep('magic-link');
+    }
+  };
+
+  const handlePasswordSubmit = (
+    passwordValue: string,
+    _rememberMe: boolean
+  ): void => {
+    onSubmit?.(usernameValue, passwordValue);
+    // Note: rememberMe value is available but not used in the current implementation
+    // It can be passed to onSubmit if needed in the future
+  };
+
+  const handleMagicLinkRequest = async (email: string) => {
+    if (!onMagicLinkRequest) return;
+    await onMagicLinkRequest(email);
+    // Show success message after sending magic link
+    setShowSuccessMessage(true);
+  };
+
+  const handleSwitchToMagicLink = () => {
+    setStep('magic-link');
+  };
+
+  const handleSwitchToPassword = () => {
     setStep('password');
-  };
-
-  const handlePasswordSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const password = formData.get('password') as string;
-
-    // Validate password is not empty
-    if (!password || password.trim() === '') {
-      setCurrentPasswordError('Please enter your password');
-      return;
-    }
-
-    setCurrentPasswordError(undefined);
-    onSubmit?.(usernameValue, password);
-  };
-
-  const handleMagicLinkRequest = () => {
-    onMagicLinkRequest?.(usernameValue);
   };
 
   const handleBack = () => {
     setStep('username');
+    setShowSuccessMessage(false);
+  };
+
+  const handleSuccessAction = () => {
+    // Default action: go back to username step
+    setShowSuccessMessage(false);
+    setStep('username');
+    successMessage?.onAction?.();
   };
 
   const isUsernameStep = step === 'username';
-  const formHandler = isUsernameStep
-    ? handleUsernameSubmit
-    : handlePasswordSubmit;
+  const isPasswordStep = step === 'password';
+  const isMagicLinkStep = step === 'magic-link';
+
+  // Build success message from either explicit prop or magic link config
+  const displaySuccessMessage: LoginSuccessMessage | undefined =
+    successMessage ||
+    (magicLinkConfig?.successMessage
+      ? {
+          title: magicLinkConfig.successMessage.title || 'Check your email',
+          description:
+            magicLinkConfig.successMessage.description?.(usernameValue) ||
+            `We've sent a login link to ${usernameValue}. Click the link in the email to sign in.`,
+          actionText: magicLinkConfig.successMessage.actionText || 'try again',
+          onAction: handleSuccessAction,
+        }
+      : undefined);
 
   return (
-    <Box
-      as="form"
-      onSubmit={
-        formHandler as unknown as React.FormEventHandler<HTMLDivElement>
-      }
-      width="full"
-    >
-      <VStack gap={8} align="stretch">
-        <LoginHeader
-          logo={heading?.logo}
-          title={heading?.title}
-          subtitle={heading?.subtitle}
+    <VStack gap={8} align="stretch" width="full">
+      <LoginHeader
+        logo={heading?.logo}
+        title={heading?.title}
+        subtitle={heading?.subtitle}
+      />
+
+      {showSuccessMessage && displaySuccessMessage && (
+        <LoginMessage
+          type="success"
+          title={displaySuccessMessage.title}
+          description={displaySuccessMessage.description}
         />
+      )}
 
-        <Stack gap={3}>
+      <Stack gap={3}>
+        {isUsernameStep && (
           <LoginUsernameStep
-            usernameField={{
-              value: usernameValue,
-              error: currentUsernameError,
-              label: username?.label,
-              placeholder: username?.placeholder,
-              autoFocus: username?.autoFocus,
-              disabled: isUsernameStep
-                ? isLoading || isVerifyingUsername
-                : undefined,
-              onChange: isUsernameStep
-                ? () => setCurrentUsernameError(undefined)
-                : undefined,
-            }}
+            username={username}
             continueButtonText={buttons?.continue}
-            isLoading={
-              isUsernameStep ? isLoading || isVerifyingUsername : false
-            }
-            showEditButton={!isUsernameStep}
-            onEdit={!isUsernameStep ? handleBack : undefined}
+            isLoading={isLoading}
+            showEditButton={false}
+            defaultValue={usernameValue}
+            onValidateUsername={onValidateUsername}
+            onUsernameVerified={onUsernameVerified}
+            onSubmit={handleUsernameSubmit}
           />
+        )}
 
-          {isUsernameStep && socialProviders && socialProviders.length > 0 && (
-            <>
-              <LoginDivider text="other methods" />
-              <LoginSocialProviders
-                providers={socialProviders}
-                disabled={isLoading || isVerifyingUsername}
-              />
-            </>
-          )}
+        {!isUsernameStep && !showSuccessMessage && (
+          <LoginUsernameStep
+            username={username}
+            isLoading={false}
+            showEditButton={true}
+            defaultValue={usernameValue}
+            onEdit={handleBack}
+            onSubmit={handleUsernameSubmit}
+          />
+        )}
 
-          {!isUsernameStep && (
+        {isUsernameStep && socialProviders && socialProviders.length > 0 && (
+          <>
+            <LoginDivider text="other methods" />
+            <LoginSocialProviders
+              providers={socialProviders}
+              disabled={isLoading}
+            />
+          </>
+        )}
+
+        {isPasswordStep && (
+          <>
             <LoginPasswordStep
               password={{
-                error: currentPasswordError || passwordError,
                 label: password?.label,
                 forgotPasswordLinkText: password?.forgotPasswordLinkText,
               }}
               buttons={{
                 submit: buttons?.submit || 'Sign in',
-                magicLink: magicLink?.buttonText || 'Send me a login link',
               }}
               rememberMe={{
-                show: rememberMe?.enabled !== false,
+                enabled: rememberMe?.enabled,
                 label: rememberMe?.label,
               }}
-              availableMethods={finalAvailableMethods}
               isLoading={isLoading}
+              externalError={passwordError}
               onForgotPassword={onForgotPassword}
-              onMagicLinkRequest={handleMagicLinkRequest}
-              onPasswordChange={() => setCurrentPasswordError(undefined)}
+              onSubmit={handlePasswordSubmit}
             />
-          )}
-        </Stack>
+            {finalAvailableMethods.includes('magic-link') && (
+              <>
+                <LoginDivider text="or" />
+                <Button
+                  type="button"
+                  width="full"
+                  variant="outline"
+                  size="lg"
+                  onClick={handleSwitchToMagicLink}
+                  disabled={isLoading}
+                >
+                  {magicLinkConfig?.buttonText || 'Send me a login link'}
+                </Button>
+              </>
+            )}
+          </>
+        )}
 
-        <LoginFooter
-          signUp={{
-            enabled: signUp?.enabled,
-            text: signUp?.text,
-            linkText: signUp?.linkText,
-            onLinkClick: onSignUp,
-          }}
-        />
-      </VStack>
-    </Box>
+        {isMagicLinkStep && (
+          <>
+            <LoginMagicLinkStep
+              buttons={{
+                send: magicLinkConfig?.buttonText || 'Send me a login link',
+                tryAgain:
+                  magicLinkConfig?.successMessage?.actionText || 'try again',
+              }}
+              email={usernameValue}
+              isSent={showSuccessMessage}
+              onSendMagicLink={handleMagicLinkRequest}
+              onTryAgain={handleSuccessAction}
+            />
+            {!showSuccessMessage &&
+              finalAvailableMethods.includes('password') && (
+                <>
+                  <LoginDivider text="or" />
+                  <Button
+                    type="button"
+                    width="full"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleSwitchToPassword}
+                  >
+                    Sign in with password
+                  </Button>
+                </>
+              )}
+          </>
+        )}
+      </Stack>
+
+      <LoginFooter
+        signUp={{
+          enabled: signUp?.enabled,
+          text: signUp?.text,
+          linkText: signUp?.linkText,
+          onLinkClick: onSignUp,
+        }}
+      />
+    </VStack>
   );
 }

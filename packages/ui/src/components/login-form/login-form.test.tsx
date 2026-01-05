@@ -4,7 +4,7 @@ import { userEvent } from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { LoginForm } from './login-form';
-import type { LoginMethodsResponse } from './login-form';
+import type { LoginMethodsResponse } from './login-username-step';
 
 // Helper to render with ChakraProvider
 function renderLoginForm(props = {}) {
@@ -342,7 +342,10 @@ describe('LoginForm', () => {
           methods: ['magic-link'],
         })
       );
-      const onMagicLinkRequest = vi.fn();
+      const onMagicLinkRequest = vi.fn(async () => {
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
 
       renderLoginForm({
         magicLink: { enabled: true },
@@ -368,6 +371,150 @@ describe('LoginForm', () => {
       await user.click(magicLinkButton);
 
       expect(onMagicLinkRequest).toHaveBeenCalledWith('user@example.com');
+    });
+
+    it('should show loading state when sending magic link', async () => {
+      const user = userEvent.setup();
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => ({
+          methods: ['magic-link'],
+        })
+      );
+      const onMagicLinkRequest = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
+
+      const emailInput = screen.getByLabelText(/email/i);
+      await user.type(emailInput, 'user@example.com');
+
+      const continueButton = screen.getByRole('button', { name: /continue/i });
+      await user.click(continueButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /send me a login link/i })
+        ).toBeInTheDocument();
+      });
+
+      const magicLinkButton = screen.getByRole('button', {
+        name: /send me a login link/i,
+      });
+      await user.click(magicLinkButton);
+
+      // Button should be disabled during loading
+      expect(magicLinkButton).toBeDisabled();
+
+      // Wait for request to complete
+      await waitFor(
+        () => {
+          expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+        },
+        { timeout: 2000 }
+      );
+    });
+
+    it('should show success message after magic link is sent', async () => {
+      const user = userEvent.setup();
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => ({
+          methods: ['magic-link'],
+        })
+      );
+      const onMagicLinkRequest = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
+
+      const emailInput = screen.getByLabelText(/email/i);
+      await user.type(emailInput, 'user@example.com');
+
+      const continueButton = screen.getByRole('button', { name: /continue/i });
+      await user.click(continueButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /send me a login link/i })
+        ).toBeInTheDocument();
+      });
+
+      const magicLinkButton = screen.getByRole('button', {
+        name: /send me a login link/i,
+      });
+      await user.click(magicLinkButton);
+
+      // Should show success message
+      await waitFor(() => {
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(/we've sent a login link to user@example\.com/i)
+        ).toBeInTheDocument();
+      });
+
+      // Magic link button should no longer be visible
+      expect(
+        screen.queryByRole('button', { name: /send me a login link/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should allow user to try again from success message', async () => {
+      const user = userEvent.setup();
+      const onUsernameVerified = vi.fn(
+        async (): Promise<LoginMethodsResponse> => ({
+          methods: ['magic-link'],
+        })
+      );
+      const onMagicLinkRequest = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      renderLoginForm({
+        magicLink: { enabled: true },
+        onUsernameVerified,
+        onMagicLinkRequest,
+      });
+
+      const emailInput = screen.getByLabelText(/email/i);
+      await user.type(emailInput, 'user@example.com');
+
+      const continueButton = screen.getByRole('button', { name: /continue/i });
+      await user.click(continueButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /send me a login link/i })
+        ).toBeInTheDocument();
+      });
+
+      const magicLinkButton = screen.getByRole('button', {
+        name: /send me a login link/i,
+      });
+      await user.click(magicLinkButton);
+
+      // Wait for success message
+      await waitFor(() => {
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      });
+
+      // Click "try again" button
+      const tryAgainButton = screen.getByRole('button', { name: /try again/i });
+      await user.click(tryAgainButton);
+
+      // Should go back to username step
+      await waitFor(() => {
+        expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+        expect(screen.queryByText(/check your email/i)).not.toBeInTheDocument();
+      });
     });
   });
 

@@ -20,7 +20,7 @@ Monorepo for a full-stack application with:
 - **Lint**: `pnpm lint` (all) or `cd services/main-ui/app && pnpm lint` (single package)
 - **Type Check**: `pnpm type-check` (all) or `cd services/main-ui/app && pnpm type-check` (single)
 - **Format**: `pnpm format` (write), `pnpm format:check` (check only)
-- **Test**: `cd services/main-ui/app && pnpm test` (watch mode), `pnpm test:run` (single run), `vitest run src/path/to/file.test.tsx` (single file). **IMPORTANT**: When asked to write or run tests, always consult the relevant testing documentation first: `docs/iac-testing.md` for infrastructure/SST/CDK tests, or `docs/manual-testing.md` for browser/UI testing
+- **Test**: `cd services/main-ui/app && pnpm test` (watch mode), `pnpm test:run` (single run), `vitest run src/path/to/file.test.tsx` (single file). **IMPORTANT**: When asked to write or run tests, always consult the relevant testing documentation first: `docs/iac-testing.md` for infrastructure/SST/CDK tests, or `docs/manual-testing.md` for manual testing with browser/UI
 
 ## AWS Credentials
 
