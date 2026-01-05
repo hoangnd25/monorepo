@@ -10,7 +10,6 @@ import {
   getParameterName,
   SharedResource,
   ServiceName,
-  ServicePath,
 } from './serviceConfig.ts';
 
 // Mock the serviceDependency module

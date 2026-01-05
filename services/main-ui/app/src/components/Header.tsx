@@ -1,7 +1,15 @@
 import { useState } from 'react';
-import { Box, Button, Flex, HStack, LoginDialog } from '@lib/ui';
-import { FaGoogle } from 'react-icons/fa';
+import {
+  Box,
+  Button,
+  CloseButton,
+  Dialog,
+  Flex,
+  HStack,
+  Portal,
+} from '@lib/ui';
 import { CustomLink } from './CustomLink';
+import { LoginFormContainer } from './LoginFormContainer';
 
 export function Header() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -32,20 +40,36 @@ export function Header() {
         </Flex>
       </Box>
 
-      <LoginDialog
-        signUp={{ enabled: false }}
-        socialProviders={[
-          {
-            id: 'google',
-            label: 'Sign in with Google',
-            icon: <FaGoogle />,
-            onClick: () => {},
-          },
-        ]}
-        open={isLoginOpen}
-        onOpenChange={setIsLoginOpen}
-        onSubmit={(_email, _password) => {}}
-      />
+      <Portal>
+        <Dialog.Root
+          open={isLoginOpen}
+          onOpenChange={(e) => setIsLoginOpen(e.open)}
+          closeOnEscape={true}
+          closeOnInteractOutside={true}
+          placement="center"
+          size={{ mdDown: 'full', base: 'sm' }}
+        >
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top="2"
+                insetEnd="2"
+                asChild
+              >
+                <CloseButton />
+              </Dialog.CloseTrigger>
+              <Dialog.Body p={{ base: 6, md: 8 }}>
+                <LoginFormContainer
+                  redirectPath="/"
+                  onSuccess={() => setIsLoginOpen(false)}
+                />
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      </Portal>
     </>
   );
 }

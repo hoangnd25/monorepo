@@ -6,9 +6,8 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router';
-import { Box, Container, UIProvider } from '@lib/ui';
+import { UIProvider } from '@lib/ui';
 import React from 'react';
-import { Header } from '~/components/Header';
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -31,14 +30,7 @@ function RootDocument({ children }: React.PropsWithChildren) {
         <HeadContent />
       </head>
       <body>
-        <UIProvider>
-          <Box minH="100vh">
-            <Header />
-            <Container maxW="container.xl" py={8}>
-              {children}
-            </Container>
-          </Box>
-        </UIProvider>
+        <UIProvider>{children}</UIProvider>
 
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
