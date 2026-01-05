@@ -1,55 +1,239 @@
 # Agent Guidelines
 
-## Project Overview
+## Critical Rules
 
-Monorepo for a full-stack application with:
+1. **Always ask for AWS credentials method and stage name** before running `dev`, `deploy`, or `system-tests` commands
+2. **Always read README.md** in any package/service directory before working with it
+3. **Never import from `@chakra-ui/*` directly** - use `@lib/ui` package
+4. **Internal API calls work only in server functions** - not client components
+5. **Consult testing docs first**: `docs/iac-testing.md` for writing infrastructure unit test, `docs/manual-testing.md` for running manual browser/UI test
 
-- **Frontend**: TanStack Start (React 19, file-based routing)
-- **Backend**: AWS Lambda via SST v2
-- **Infrastructure**: SST v2 + AWS CDK for infrastructure as code (IAC). Resources are deployed to AWS
-- **Inter-service communication**: ORPC (contract-first, type-safe RPC with AWS Signature V4)
-- **Monorepo**: Turborepo + pnpm workspaces with catalog
-- **Local dev/test**: Resources are deployed to AWS for testing in a ephemeral/preview stage
+## Tech Stack
 
-## Commands
+| Layer          | Technology                                       |
+| -------------- | ------------------------------------------------ |
+| Frontend       | TanStack Start (React 19, file-based routing)    |
+| Backend        | AWS Lambda via SST v2                            |
+| Infrastructure | SST v2 + AWS CDK                                 |
+| Inter-service  | ORPC (contract-first, type-safe RPC, AWS Sig V4) |
+| Monorepo       | Turborepo + pnpm workspaces with catalog         |
 
-- **Install**: `pnpm install` (requires Node.js >=22, pnpm >=10.26.2)
-- **Dev**: See [Local Development Guide](docs/local-dev.md) for detailed instructions. Quick reference:
-  - Backend (SST): `cd services/<service-name> && pnpm dev --stage <stage>` (requires AWS credentials and stage name)
-  - Frontend: `cd services/<service-name>/app && pnpm dev --stage <stage>`
-  - **IMPORTANT**: Always ask the user for both the stage name and AWS credentials method (e.g., aws-vault profile) before running dev commands. Check if services are already running with `ps aux | grep "sst dev"` or `ps aux | grep "vite dev"`.
-- **Build**: `pnpm build` (uses Turborepo, builds all packages/services including type check)
-- **Deploy**: `cd services/main-ui && pnpm run deploy -- --stage <stage>` (SST deployment, use current branch for stage, requires AWS credentials)
-- **Lint**: `pnpm lint` (all) or `cd services/main-ui/app && pnpm lint` (single package)
-- **Type Check**: `pnpm type-check` (all) or `cd services/main-ui/app && pnpm type-check` (single)
-- **Format**: `pnpm format` (write), `pnpm format:check` (check only)
-- **Test**: `cd services/main-ui/app && pnpm test` (watch mode), `pnpm test:run` (single run), `vitest run src/path/to/file.test.tsx` (single file). **IMPORTANT**: When asked to write or run tests, always consult the relevant testing documentation first: `docs/iac-testing.md` for infrastructure/SST/CDK tests, `docs/manual-testing.md` for manual testing with browser/UI, or see `system-tests/` for integration tests against deployed services
-- **System Tests**: `cd system-tests && aws-vault exec <profile> -- pnpm system-tests -- --stage <stage>` (single run, default), `pnpm system-tests:watch -- --stage <stage>` (watch mode). Integration tests that run against deployed services by calling internal APIs or dispatching events. **Requires AWS credentials** because tests run against real deployed AWS resources. The `--stage` parameter specifies which deployed stage to test (e.g., `dev`, `test`, `preview`). The `--region` parameter specifies AWS region (defaults to process.env_AWS_REGION). All other parameters are passed through to Vitest. Since these are slow, they default to single-run mode rather than watch mode.
+## Commands Reference
 
-## AWS Credentials
+### Quick Reference
 
-For SST services requiring AWS credentials, the user may use aws-vault or other credential methods. Always ask which AWS profile/method to use before running commands that require credentials.
+| Task       | Command           | Notes                         |
+| ---------- | ----------------- | ----------------------------- |
+| Install    | `pnpm install`    | Node.js >=22, pnpm >=10.26.2  |
+| Build      | `pnpm build`      | All packages/services         |
+| Lint       | `pnpm lint`       | All, or `--filter <pkg>`      |
+| Type Check | `pnpm type-check` | All, or `--filter <pkg>`      |
+| Format     | `pnpm format`     | `format:check` for check only |
 
-## Additional Documentation
+### Development (requires AWS credentials + stage)
 
-- **[Local Development](docs/local-dev.md)**: Guide for running backend and frontend services locally
-- **[Manual Browser Testing](docs/manual-testing.md)**: Guide for using Playwright MCP tools for interactive browser testing
-- **[IAC Testing](docs/iac-testing.md)**: Infrastructure testing patterns and best practices for SST/CDK code
-- **[Auth Documentation](docs/auth.md)**: Authentication implementation details
-- **[IAC Patterns](docs/iac-patterns.md)**: Infrastructure as code patterns and conventions (CDK & SST v2)
+```bash
+# Backend service
+cd services/<service-name> && pnpm dev --stage <stage>
+
+# Frontend service
+cd services/<service-name>/app && pnpm dev --stage <stage>
+
+# Check if already running
+ps aux | grep "sst dev"
+ps aux | grep "vite dev"
+```
+
+### Testing
+
+```bash
+# Unit tests
+pnpm test                                             # watch mode
+pnpm test:run                                         # single run
+pnpm test:run src/path/to/file.test.tsx               # single file
+
+# Unit tests for infrastructure (IAC) code at service root
+cd services/<service-name> && pnpm test
+
+# Unit tests for frontend app
+cd services/<service-name>/app && pnpm test
+
+# Unit tests for backend service code
+cd services/<service-name>/functions && pnpm test
+
+# System tests (requires AWS credentials)
+cd system-tests && aws-vault exec <profile> -- pnpm system-tests -- --stage <stage>
+```
+
+### Deployment
+
+```bash
+# With aws-vault
+aws-vault exec <profile> -- pnpm --filter @infra/<service> deploy -- --stage <stage>
+
+# With env credentials
+pnpm --filter @infra/<service> deploy -- --stage <stage>
+
+# Within service folder
+cd services/<service-name> && pnpm deploy --stage <stage>
+```
+
+### Turborepo Filters
+
+```bash
+pnpm --filter <pkg> <task>              # Single package
+pnpm --filter '@infra/*' <task>         # Wildcard (quotes required)
+pnpm --filter '<pkg>...' <task>         # Include dependencies
+pnpm --filter '!<pkg>' <task>           # Exclude package
+```
+
+## Directory Structure
+
+### Services (`services/`)
+
+All services have `infra/` at root for infrastructure code. Service types:
+
+**Backend** (run `pnpm dev` from service root):
+
+```
+services/<name>/
+├── functions/src/     # Lambda code
+├── functions/test/    # Function tests
+├── infra/Main.ts      # Stack definition
+└── sst.config.ts
+```
+
+**Frontend** (run `pnpm dev` from `app/`):
+
+```
+services/<name>/
+├── app/src/routes/    # File-based routing
+├── app/src/server/    # Server functions
+├── infra/Main.ts      # Stack definition
+└── sst.config.ts
+```
+
+**Infrastructure-only**:
+
+```
+services/<name>/
+├── infra/Main.ts      # Stack definition
+└── sst.config.ts
+```
+
+### Packages (`packages/`)
+
+| Type      | Purpose               | Discovery                  |
+| --------- | --------------------- | -------------------------- |
+| UI        | Component libraries   | "ui" in name               |
+| Contract  | API schemas (ORPC)    | "contract" in name         |
+| Client    | API clients with auth | "client" in name           |
+| Construct | SST/CDK constructs    | "construct", "sst" in name |
+| Config    | ESLint, TS configs    | "config-" prefix           |
+
+## Architectural Patterns
+
+### Internal APIs (ORPC)
+
+Pattern: Contract definition -> Implementation -> Client usage
+
+- Uses AWS Signature V4 signing
+- Lambda handler prefix must match API Gateway route prefix
+- **See**: `docs/internal-api.md`
+
+### Service Configuration (SSM)
+
+Naming: `/service/{service-name}/{stage}/{key}`
+
+- **See**: `docs/iac-patterns.md`
+
+### Shared Infrastructure
+
+1. Shared service creates base resources (HTTP API Gateway)
+2. Other services import and add routes under a prefix
+3. Routes use IAM authorization
+4. Discovery via SSM parameters
+
+**Important**: Declare workspace dependency when importing from other services' infrastructure.
 
 ## Code Style
 
-- **Imports**: Use `@lib/ui` package for ALL Chakra UI components (never import from @chakra-ui directly), `workspace:*` for internal deps, `catalog:` for shared versions (react, typescript, zod, vitest, @testing-library/\*, @types/node, @types/aws-lambda). Import from `@lib/sst-constructs` for shared SST/infrastructure constructs (e.g: NitroSite, ServiceConfig), and `@lib/sst-constructs/node` for Node.js-specific code often used in Lambda function.
-- **Formatting**: Prettier enforced (single quotes, semicolons, 2-space indentation, 80 char printWidth, ES5 trailing commas)
-- **Types**: Strict TypeScript with `strict: true`, `strictNullChecks: true`, no `any` (ESLint error), use Zod v4 for runtime validation
-- **Naming**: PascalCase for components/types, camelCase for functions/variables, file-based routing for TanStack Router (`index.tsx`, `about.tsx` in `routes/`)
-- **Components**: Use Chakra UI v3 composition pattern (`Component.Root`, `Component.Body`, etc.), all Chakra exports via `packages/ui/src/chakra.tsx`
-- **Testing**: Use Vitest with jsdom, custom render function from `~/test/test-utils.tsx` wraps components in ChakraProvider, mock TanStack Router with `createRouter`/`createRoute` helpers. For infrastructure/SST/CDK tests, refer to `docs/iac-testing.md` for comprehensive testing patterns and best practices.
-- **Error Handling**: ESLint warns on console (except console.warn/error), React 19 JSX transform (no React import needed)
-- **File Structure**: `services/` for apps, `packages/` for shared libs, `~/*` alias maps to `src/` in services. Service source code in `./app` or `./functions` subdirs, infrastructure code (SST, infra/) at service root
-- **ESLint Configs**: Use `@config/eslint/tanstack` for TanStack Start apps, `@config/eslint/node` for Node.js services (like main-api), `@config/eslint/react` for React libraries
+### Imports
 
-## Project Context
+```typescript
+import { Button } from '@lib/ui'; // UI components - ALWAYS use @lib/ui
+import { NitroSite, ServiceConfig } from '@lib/sst-constructs'; // SST constructs
+import { someHelper } from '@lib/sst-constructs/node'; // SST constructs consumption in lambda code
+```
 
-TanStack Start (React 19) + Chakra UI v3 monorepo with Turborepo, pnpm workspaces, and Vite. Main frontend at `services/main-ui` with SSR via TanStack Start + Nitro. Backend at `services/main-api` with SST + AWS Lambda. Flat ESLint config extends @tanstack/eslint-config. Test setup uses Vitest 4.x with @testing-library/react 16.x. Shared SST constructs (SsrSite, NitroSite) in `@lib/sst-constructs` (packages/sst-constructs).
+### Package Dependencies
+
+```json
+{
+  "dependencies": {
+    "@lib/ui": "workspace:*", // Internal packages
+    "react": "catalog:" // Shared versions
+  }
+}
+```
+
+Catalog versions: react, typescript, zod, vitest, @testing-library/_, @types/node, @types/aws-lambda, @aws-sdk/_
+
+### Naming Conventions
+
+| Type       | Convention           | Example                      |
+| ---------- | -------------------- | ---------------------------- |
+| Files      | kebab-case           | `user-profile.tsx`           |
+| Components | PascalCase export    | `export const UserProfile`   |
+| Functions  | camelCase            | `getUserById`                |
+| Routes     | Framework convention | `index.tsx`, `users/$id.tsx` |
+| Tests      | `.test.` suffix      | `user-profile.test.tsx`      |
+
+### TypeScript & Formatting
+
+- Strict mode: `strict: true`, `strictNullChecks: true`
+- No `any` (ESLint error)
+- Zod v4 for runtime validation
+- Prettier: single quotes, semicolons, 2-space indent, 80 char width
+
+### ESLint Configs
+
+| App Type         | Config                    |
+| ---------------- | ------------------------- |
+| TanStack Start   | `@config/eslint/tanstack` |
+| Node.js services | `@config/eslint/node`     |
+| React libraries  | `@config/eslint/react`    |
+
+### Testing
+
+- Vitest with jsdom
+- Custom render from `~/test/test-utils.tsx` (wraps ChakraProvider)
+- Mock TanStack Router with `createRouter`/`createRoute`
+- Infrastructure tests: see `docs/iac-testing.md`
+
+### Chakra UI v3
+
+Use composition pattern:
+
+```tsx
+<Component.Root>
+  <Component.Body />
+</Component.Root>
+```
+
+## Common Gotchas
+
+1. **AWS credentials for dev**: Services calling internal APIs need credentials
+2. **Deployment order**: Use monorepo-level commands for automatic dependency ordering
+3. **Infrastructure tests**: Named functions for stack, mock `@lib/sst-helpers`, call `await app.finish()` before assertions
+
+## Documentation Index
+
+| Topic                  | Location                 |
+| ---------------------- | ------------------------ |
+| Local Development      | `docs/local-dev.md`      |
+| Manual Browser Testing | `docs/manual-testing.md` |
+| IAC Testing            | `docs/iac-testing.md`    |
+| IAC Patterns           | `docs/iac-patterns.md`   |
+| Internal APIs          | `docs/internal-api.md`   |
+| Authentication         | `docs/auth.md`           |

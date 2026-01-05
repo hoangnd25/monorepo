@@ -53,8 +53,8 @@ const cognitoClient = new CognitoIdentityProviderClient({});
  * @throws Error if any configuration values cannot be retrieved
  */
 export async function getCognitoConfig(): Promise<CognitoConfig> {
-  const userPoolId = Config.COGNITO_USER_POOL_ID.value;
-  const clientId = Config.COGNITO_CLIENT_ID.value;
+  const userPoolId = Config.COGNITO_USER_POOL_ID;
+  const clientId = Config.COGNITO_CLIENT_ID;
 
   if (!userPoolId || !clientId) {
     throw new Error(
