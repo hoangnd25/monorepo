@@ -124,8 +124,6 @@ export type ServiceConfigTypes = {
   [T in keyof ServiceConfigResources]: string;
 };
 
-export const ServiceConfig =
-  /* @__PURE__ */ createProxy<PromisifyResource<ServiceConfigTypes>>(
-    'ServiceConfig',
-    ssmPaths
-  );
+export const ServiceConfig = /* @__PURE__ */ createProxy<
+  PromisifyResource<ServiceConfigTypes>
+>('ServiceConfig', ssmPaths);
