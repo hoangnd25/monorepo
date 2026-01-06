@@ -73,7 +73,7 @@ export function getCommonConfig(): CommonConfig {
 /**
  * Supported sign-in methods for custom auth flow
  */
-export type SignInMethod = 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP';
+export type SignInMethod = 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP' | 'SOCIAL_LOGIN';
 
 /**
  * Helper to determine if a sign-in method is valid
@@ -81,6 +81,6 @@ export type SignInMethod = 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP';
 export function isValidSignInMethod(method: unknown): method is SignInMethod {
   return (
     typeof method === 'string' &&
-    ['MAGIC_LINK', 'FIDO2', 'SMS_OTP'].includes(method)
+    ['MAGIC_LINK', 'FIDO2', 'SMS_OTP', 'SOCIAL_LOGIN'].includes(method)
   );
 }

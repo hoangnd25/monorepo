@@ -13,6 +13,7 @@ import type {
 } from 'aws-lambda';
 import { Logger, UserFacingError, isValidSignInMethod } from '../common.js';
 import * as magicLink from '../custom-auth/magic-link.js';
+import * as socialLogin from '../custom-auth/social-login.js';
 
 const logger = new Logger();
 
@@ -47,11 +48,14 @@ export const handler: VerifyAuthChallengeResponseTriggerHandler = async (
  */
 async function handleSignInMethod(
   event: VerifyAuthChallengeResponseTriggerEvent,
-  signInMethod: 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP'
+  signInMethod: 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP' | 'SOCIAL_LOGIN'
 ): Promise<void> {
   switch (signInMethod) {
     case 'MAGIC_LINK':
       await magicLink.addChallengeVerificationResultToEvent(event, logger);
+      break;
+    case 'SOCIAL_LOGIN':
+      await socialLogin.addChallengeVerificationResultToEvent(event, logger);
       break;
     case 'FIDO2':
       await verifyFido2Response(event);

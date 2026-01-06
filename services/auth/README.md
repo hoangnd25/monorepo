@@ -2,13 +2,17 @@
 
 Authentication service using AWS Cognito with custom authentication flows and an internal API for inter-service communication.
 
-> **📚 Comprehensive Guide**: See [Authentication Architecture](../../docs/auth.md) for detailed design principles, service communication patterns, and infrastructure setup.
+> **Comprehensive Guide**: See [Authentication Architecture](../../docs/auth.md) for detailed design principles, service communication patterns, and infrastructure setup.
 
 ## Overview
 
 This service provides:
 
-1. **Passwordless authentication** using AWS Cognito with custom Lambda triggers (Magic Link, with support for FIDO2/WebAuthn and SMS OTP planned)
+1. **Passwordless authentication** using AWS Cognito with custom Lambda triggers:
+   - **Magic Link** - Email-based one-time sign-in links (implemented)
+   - **Social Login** - OAuth 2.0/OpenID Connect with Google, Apple, Microsoft (Google implemented)
+   - **FIDO2/WebAuthn** - Biometric/security key authentication (planned)
+   - **SMS OTP** - SMS-based step-up authentication (planned)
 2. **Internal API** built with ORPC for type-safe RPC calls between services
 
 ## Internal API
@@ -40,19 +44,23 @@ const user = await client.user.get({ id: 'user-123' });
 
 ### API Endpoints
 
-| Endpoint                    | Method | Description                            | Status                     |
-| --------------------------- | ------ | -------------------------------------- | -------------------------- |
-| `/auth/users/{id}`          | GET    | Get user by ID                         | TODO - not yet implemented |
-| `/auth/magic-link/initiate` | POST   | Start magic link authentication        | Implemented                |
-| `/auth/magic-link/complete` | POST   | Complete authentication, return tokens | Implemented                |
+| Endpoint                    | Method | Description                            | Status      |
+| --------------------------- | ------ | -------------------------------------- | ----------- |
+| `/auth/users/{id}`          | GET    | Get user by ID                         | Planned     |
+| `/auth/magic-link/initiate` | POST   | Start magic link authentication        | Implemented |
+| `/auth/magic-link/complete` | POST   | Complete authentication, return tokens | Implemented |
+| `/auth/social/initiate`     | POST   | Start social login OAuth flow          | Implemented |
+| `/auth/social/complete`     | POST   | Complete social login, return tokens   | Implemented |
 
 **Request/Response Summary:**
 
-| Endpoint     | Input                    | Output                                                         |
-| ------------ | ------------------------ | -------------------------------------------------------------- |
-| `initiate`   | `{ email, redirectUri }` | `{ session, message }`                                         |
-| `complete`   | `{ session, secret }`    | `{ accessToken, idToken, refreshToken, expiresIn, tokenType }` |
-| `users/{id}` | `{ id }`                 | `{ id, email }` (TODO)                                         |
+| Endpoint              | Input                                                  | Output                                                         |
+| --------------------- | ------------------------------------------------------ | -------------------------------------------------------------- |
+| `magic-link/initiate` | `{ email, redirectUri }`                               | `{ session, message }`                                         |
+| `magic-link/complete` | `{ session, secret }`                                  | `{ accessToken, idToken, refreshToken, expiresIn, tokenType }` |
+| `social/initiate`     | `{ provider, redirectUri, codeChallenge }`             | `{ authUrl, state }`                                           |
+| `social/complete`     | `{ provider, code, state, codeVerifier, redirectUri }` | `{ accessToken, idToken, refreshToken, expiresIn, tokenType }` |
+| `users/{id}`          | `{ id }`                                               | `{ id, email }` (planned)                                      |
 
 > **Full schemas**: See [`@contract/internal-api/auth`](../../packages/contract-internal-api/src/auth.ts)
 >
@@ -79,6 +87,7 @@ The infrastructure is organized into reusable CDK constructs:
 - **`UserPool`** - Creates and configures AWS Cognito User Pool
 - **`CognitoTriggers`** - Generic Lambda handlers for custom auth flow (supports multiple auth methods)
 - **`MagicLink`** - Magic Link specific resources (KMS key, DynamoDB table, permissions)
+- **`SocialLogin`** - Social login configuration (SST Config secrets, Lambda bindings)
 
 ### Lambda Functions (`functions/`)
 
@@ -91,7 +100,8 @@ functions/src/cognito/
 │   ├── verify-auth-challenge-response.ts  # Delegates verification to auth methods
 │   └── pre-signup.ts                 # Auto-confirms users
 └── custom-auth/                      # Auth method implementations
-    └── magic-link.ts                 # Magic Link create/verify logic
+    ├── magic-link.ts                 # Magic Link create/verify logic
+    └── social-login.ts               # Social Login token verification
 ```
 
 ## Magic Link Authentication
@@ -183,6 +193,88 @@ The `completeMagicLink` server function reads the session from cookies:
 - KMS GetPublicKey for VerifyAuthChallengeResponse Lambda
 - DynamoDB read/write for both Lambdas
 
+## Social Login
+
+Social Login enables users to authenticate using their existing accounts from third-party OAuth providers.
+
+### Supported Providers
+
+| Provider | Status      | Protocol       |
+| -------- | ----------- | -------------- |
+| Google   | Implemented | OpenID Connect |
+
+### How It Works
+
+1. User clicks "Sign in with Google" (or other provider)
+2. Frontend generates PKCE code verifier and challenge
+3. Auth service builds OAuth authorization URL
+4. User is redirected to provider's consent screen
+5. Provider redirects back with authorization code
+6. Auth service exchanges code for provider tokens
+7. Auth service validates ID token and extracts user email
+8. Auth service creates/finds Cognito user and issues Cognito tokens
+
+### Security Features
+
+- **PKCE (Proof Key for Code Exchange)**: Prevents authorization code interception
+- **State parameter**: CSRF protection via random state token
+- **ID Token validation**: JWT signature verification using provider's JWKS
+- **Audience validation**: Ensures tokens were issued for our application
+- **Issuer validation**: Confirms tokens came from the expected provider
+
+### Configuration
+
+#### Setting Up Google OAuth
+
+1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Configure authorized redirect URIs: `https://your-domain.com/auth/social/callback`
+3. Set SST secrets:
+
+```bash
+# Set Google OAuth credentials
+npx sst secrets set SOCIAL_GOOGLE_CLIENT_ID "your-client-id" --stage <stage>
+npx sst secrets set SOCIAL_GOOGLE_CLIENT_SECRET "your-client-secret" --stage <stage>
+```
+
+#### Disabling a Provider
+
+To disable a provider without removing secrets:
+
+```bash
+npx sst secrets set SOCIAL_GOOGLE_CLIENT_ID "NA" --stage <stage>
+```
+
+### Infrastructure Components
+
+**SocialLogin Construct** (`infra/cognito/SocialLogin.ts`)
+
+Manages social provider configuration:
+
+- Creates SST Config secrets for each provider's credentials
+- Binds credentials to internal API Lambda (for OAuth flow)
+- Binds client IDs to VerifyAuthChallengeResponse Lambda (for token validation)
+
+**Provider Configuration** (`functions/src/shared/social-providers.ts`)
+
+Centralized registry of provider settings:
+
+- OIDC issuer URLs and JWKS endpoints
+- OAuth scopes per provider
+- Credential getters from SST Config
+
+### Key Files
+
+| Component            | File                                                    |
+| -------------------- | ------------------------------------------------------- |
+| Infrastructure       | `infra/cognito/SocialLogin.ts`                          |
+| Provider config      | `functions/src/shared/social-providers.ts`              |
+| OAuth service        | `functions/src/internal-api/services/social-login.ts`   |
+| ORPC middleware      | `functions/src/internal-api/middleware/social-login.ts` |
+| Cognito token verify | `functions/src/cognito/custom-auth/social-login.ts`     |
+| API contract         | `packages/contract-internal-api/src/auth.ts`            |
+
+> **Architecture details**: See [Authentication Architecture - Social Login](../../docs/auth.md#social-login) for detailed flow diagrams.
+
 ## Configuration
 
 ### Example Setup (`infra/Main.ts`)
@@ -190,6 +282,7 @@ The `completeMagicLink` server function reads the session from cookies:
 ```typescript
 import { CognitoTriggers } from './cognito/CognitoTriggers.ts';
 import { MagicLink } from './cognito/MagicLink.ts';
+import { SocialLogin } from './cognito/SocialLogin.ts';
 import { UserPool } from './cognito/UserPool.ts';
 
 // Create UserPool
@@ -218,6 +311,14 @@ const magicLink = new MagicLink(stack, 'magic-link', {
   },
   expiryDuration: Duration.minutes(15), // Optional
   minimumInterval: Duration.minutes(1), // Optional
+});
+
+// Configure Social Login authentication
+new SocialLogin(stack, 'social-login', {
+  userPool: mainUserPool.userPool,
+  internalApi,
+  cognitoTriggers,
+  providers: ['google'], // Add more providers as needed
 });
 ```
 
@@ -270,10 +371,18 @@ Lambda functions are configured with the following environment variables (automa
 
 #### Internal API Lambda
 
-| Variable               | Description                           |
-| ---------------------- | ------------------------------------- |
-| `COGNITO_USER_POOL_ID` | Cognito User Pool ID (via SST Config) |
-| `COGNITO_CLIENT_ID`    | Cognito Client ID (via SST Config)    |
+| Variable                      | Description                                 |
+| ----------------------------- | ------------------------------------------- |
+| `COGNITO_USER_POOL_ID`        | Cognito User Pool ID (via SST Config)       |
+| `COGNITO_CLIENT_ID`           | Cognito Client ID (via SST Config)          |
+| `SOCIAL_GOOGLE_CLIENT_ID`     | Google OAuth Client ID (via SST Config)     |
+| `SOCIAL_GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret (via SST Config) |
+
+#### VerifyAuthChallengeResponse Lambda (Social Login)
+
+| Variable                  | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| `SOCIAL_GOOGLE_CLIENT_ID` | Google OAuth Client ID for audience validation |
 
 ## Related Documentation
 

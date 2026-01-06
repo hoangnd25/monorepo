@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthMagicLinkRouteImport } from './routes/auth/magic-link'
+import { Route as AuthSocialCallbackRouteImport } from './routes/auth/social/callback'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,18 +35,25 @@ const AuthMagicLinkRoute = AuthMagicLinkRouteImport.update({
   path: '/auth/magic-link',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSocialCallbackRoute = AuthSocialCallbackRouteImport.update({
+  id: '/auth/social/callback',
+  path: '/auth/social/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
   '/auth/magic-link': typeof AuthMagicLinkRoute
+  '/auth/social/callback': typeof AuthSocialCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
   '/auth/magic-link': typeof AuthMagicLinkRoute
+  '/auth/social/callback': typeof AuthSocialCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,25 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
   '/auth/magic-link': typeof AuthMagicLinkRoute
+  '/auth/social/callback': typeof AuthSocialCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/login' | '/auth/magic-link'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/login'
+    | '/auth/magic-link'
+    | '/auth/social/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/login' | '/auth/magic-link'
-  id: '__root__' | '/' | '/about' | '/login' | '/auth/magic-link'
+  to: '/' | '/about' | '/login' | '/auth/magic-link' | '/auth/social/callback'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/login'
+    | '/auth/magic-link'
+    | '/auth/social/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +87,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   LoginRoute: typeof LoginRoute
   AuthMagicLinkRoute: typeof AuthMagicLinkRoute
+  AuthSocialCallbackRoute: typeof AuthSocialCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthMagicLinkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/social/callback': {
+      id: '/auth/social/callback'
+      path: '/auth/social/callback'
+      fullPath: '/auth/social/callback'
+      preLoaderRoute: typeof AuthSocialCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +135,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   LoginRoute: LoginRoute,
   AuthMagicLinkRoute: AuthMagicLinkRoute,
+  AuthSocialCallbackRoute: AuthSocialCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

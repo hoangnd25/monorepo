@@ -82,8 +82,11 @@ describe('Main stack', () => {
               Effect: 'Allow',
               Action: [
                 'cognito-idp:DescribeUserPoolClient',
-                'cognito-idp:InitiateAuth',
-                'cognito-idp:RespondToAuthChallenge',
+                'cognito-idp:AdminGetUser',
+                'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminSetUserPassword',
+                'cognito-idp:AdminInitiateAuth',
+                'cognito-idp:AdminRespondToAuthChallenge',
               ],
               Resource: {
                 'Fn::GetAtt': Match.arrayWith([

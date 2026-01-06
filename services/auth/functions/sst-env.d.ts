@@ -9,4 +9,13 @@ declare module 'sst/node/config' {
       value: string;
     };
   }
+
+  export interface SecretResources {
+    SOCIAL_GOOGLE_CLIENT_ID: {
+      value: string;
+    };
+    SOCIAL_GOOGLE_CLIENT_SECRET: {
+      value: string;
+    };
+  }
 }

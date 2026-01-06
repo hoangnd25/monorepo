@@ -62,6 +62,8 @@ function handleSignInMethod(
       return handleFido2Response(event);
     case 'SMS_OTP':
       return handleSmsOtpResponse(event);
+    case 'SOCIAL_LOGIN':
+      return handleSocialLoginResponse(event);
     default:
       return deny(event, `Unrecognized signInMethod: ${signInMethod}`);
   }
@@ -109,6 +111,35 @@ function handleSmsOtpResponse(
   logger.info('Checking SMS OTP Auth ...');
   // Placeholder for SMS OTP implementation
   return deny(event, 'SMS OTP authentication not yet implemented');
+}
+
+/**
+ * Handle Social Login authentication response
+ *
+ * Social login follows a two-step flow similar to magic link:
+ * 1. First call: Create a challenge to accept the ID token
+ * 2. Second call: Check if verification was successful
+ *
+ * The auth service exchanges the OAuth code for an ID token with the provider,
+ * then sends that ID token as the challenge answer. The VerifyAuthChallengeResponse
+ * trigger validates the ID token signature and claims.
+ */
+function handleSocialLoginResponse(
+  event: DefineAuthChallengeTriggerEvent
+): DefineAuthChallengeTriggerEvent {
+  logger.info('Checking Social Login Auth ...');
+  const lastResponse = event.request.session.slice(-1)[0];
+
+  // Check if the ID token verification was successful
+  if (lastResponse?.challengeResult === true) {
+    return allow(event);
+  } else if (countAttempts(event) === 0) {
+    // First attempt - create challenge to accept the social ID token
+    logger.info('Creating social login challenge');
+    return customChallenge(event);
+  }
+
+  return deny(event, 'Failed to authenticate with Social Login');
 }
 
 function deny(

@@ -10,6 +10,7 @@ Comprehensive guide to the authentication architecture, design decisions, and im
 - [Service Communication](#service-communication)
 - [Infrastructure Patterns](#infrastructure-patterns)
 - [Security Model](#security-model)
+- [Social Login](#social-login)
 - [Related Documentation](#related-documentation)
 
 ## Overview
@@ -367,6 +368,154 @@ sequenceDiagram
    - Server (server functions): All processing logic, cookie management, auth API calls
    - Auth service: Cognito operations
 
+## Social Login
+
+Social Login enables users to authenticate using their existing accounts from third-party providers (Google, Apple, Microsoft, Facebook). The implementation follows the same service encapsulation principles as Magic Link authentication.
+
+### Supported Providers
+
+| Provider | Status      | Protocol       | Notes                       |
+| -------- | ----------- | -------------- | --------------------------- |
+| Google   | Implemented | OpenID Connect | Primary social login option |
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Social Login Flow                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────────┐  │
+│  │  User    │───>│   main-ui    │───>│ Auth Service │───>│  OAuth        │  │
+│  │  Browser │    │  (Frontend)  │    │ (Internal API)│   │  Provider     │  │
+│  └──────────┘    └──────────────┘    └──────────────┘    └───────────────┘  │
+│       │                │                    │                    │          │
+│       │                │                    │                    │          │
+│       │    1. Click    │    2. Initiate     │   3. Build Auth    │          │
+│       │    "Google"    │    Social Login    │      URL           │          │
+│       │ ──────────────>│ ──────────────────>│ ──────────────────>│          │
+│       │                │                    │                    │          │
+│       │    4. Redirect to Provider          │                    │          │
+│       │ <───────────────────────────────────────────────────────>│          │
+│       │                │                    │                    │          │
+│       │    5. User consents, provider redirects back             │          │
+│       │ <───────────────────────────────────────────────────────>│          │
+│       │                │                    │                    │          │
+│       │    6. Callback │    7. Complete     │   8. Exchange      │          │
+│       │    with code   │    Social Login    │   code for tokens  │          │
+│       │ ──────────────>│ ──────────────────>│ ──────────────────>│          │
+│       │                │                    │                    │          │
+│       │                │                    │   9. Validate ID   │          │
+│       │                │                    │      token, create │          │
+│       │                │                    │      Cognito user  │          │
+│       │                │                    │ <──────────────────│          │
+│       │                │                    │                    │          │
+│       │                │   10. Issue        │                    │          │
+│       │                │   Cognito tokens   │                    │          │
+│       │                │ <──────────────────│                    │          │
+│       │                │                    │                    │          │
+│       │   11. Authenticated session         │                    │          │
+│       │ <──────────────│                    │                    │          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Social Login Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant MainUI as main-ui (Frontend)
+    participant ServerFn as main-ui (Server Function)
+    participant AuthAPI as Auth Service (Internal API)
+    participant Provider as OAuth Provider (Google)
+    participant Cognito
+
+    User->>MainUI: Click "Sign in with Google"
+    MainUI->>ServerFn: initiateSocialLogin({ provider: 'google' })
+    ServerFn->>ServerFn: Generate PKCE code_verifier & code_challenge
+    ServerFn->>AuthAPI: POST /auth/social/initiate
+    AuthAPI->>AuthAPI: Build authorization URL with PKCE
+    AuthAPI->>ServerFn: Return { authUrl, state }
+    ServerFn->>ServerFn: Store state + codeVerifier in session cookie
+    ServerFn->>MainUI: Return authUrl
+    MainUI->>Provider: Redirect to authorization URL
+
+    Provider->>User: Display consent screen
+    User->>Provider: Grant consent
+    Provider->>MainUI: Redirect to /auth/social/callback?code=...&state=...
+
+    MainUI->>ServerFn: processSocialCallback({ code, state })
+    ServerFn->>ServerFn: Validate state matches session (CSRF protection)
+    ServerFn->>AuthAPI: POST /auth/social/complete
+    AuthAPI->>Provider: Exchange code for tokens (with PKCE verifier)
+    Provider->>AuthAPI: Return access_token, id_token
+    AuthAPI->>AuthAPI: Validate ID token (signature, audience, issuer)
+    AuthAPI->>AuthAPI: Extract email from ID token claims
+    AuthAPI->>Cognito: Find or create user (AdminGetUser / AdminCreateUser)
+    AuthAPI->>Cognito: AdminInitiateAuth (CUSTOM_AUTH)
+    Cognito->>AuthAPI: Session with SOCIAL_LOGIN challenge
+    AuthAPI->>Cognito: AdminRespondToAuthChallenge (with provider ID token)
+    Cognito->>Cognito: VerifyAuthChallengeResponse Lambda validates ID token
+    Cognito->>AuthAPI: Return Cognito JWTs
+    AuthAPI->>ServerFn: Return tokens
+    ServerFn->>ServerFn: Store tokens in session
+    ServerFn->>MainUI: Return { success, redirectPath }
+    MainUI->>User: Redirect to app
+```
+
+### Security Features
+
+- **PKCE (Proof Key for Code Exchange)**: Prevents authorization code interception attacks
+- **State parameter**: CSRF protection via random state token stored in session
+- **ID Token validation**: JWT signature verification using provider's JWKS
+- **Audience validation**: Ensures tokens were issued for our application
+- **Issuer validation**: Confirms tokens came from the expected provider
+- **One-time code exchange**: Authorization codes can only be exchanged once
+
+### Infrastructure Components
+
+The `SocialLogin` construct manages social provider configuration:
+
+**SST Config Secrets** (per provider):
+
+- `SOCIAL_<PROVIDER>_CLIENT_ID`: OAuth client ID (set to "NA" to disable)
+- `SOCIAL_<PROVIDER>_CLIENT_SECRET`: OAuth client secret
+
+**Disabling a Provider**:
+
+```bash
+# Disable Google login for a stage
+npx sst secrets set SOCIAL_GOOGLE_CLIENT_ID "NA" --stage <stage>
+```
+
+**Key Files**:
+
+| Component                 | File                                                                |
+| ------------------------- | ------------------------------------------------------------------- |
+| Infrastructure construct  | `services/auth/infra/cognito/SocialLogin.ts`                        |
+| Provider configuration    | `services/auth/functions/src/shared/social-providers.ts`            |
+| OAuth service             | `services/auth/functions/src/internal-api/services/social-login.ts` |
+| API contract              | `packages/contract-internal-api/src/auth.ts`                        |
+| Frontend server functions | `services/main-ui/app/src/server/auth.ts`                           |
+| Callback route            | `services/main-ui/app/src/routes/auth/social/callback.tsx`          |
+
+### Cognito Integration
+
+Social login uses Cognito's CUSTOM_AUTH flow with a `SOCIAL_LOGIN` challenge type:
+
+1. **User Creation**: If user doesn't exist, `AdminCreateUser` creates a Cognito user with the provider email
+2. **Custom Auth Flow**: `AdminInitiateAuth` starts CUSTOM_AUTH flow
+3. **Challenge Creation**: `CreateAuthChallenge` Lambda returns `SOCIAL_LOGIN` challenge type
+4. **Token Verification**: `VerifyAuthChallengeResponse` Lambda validates the provider's ID token using `aws-jwt-verify`
+5. **Token Issuance**: On successful verification, Cognito issues its own JWTs
+
+This approach:
+
+- Maintains a unified user pool (users can have both magic link and social login)
+- Keeps provider secrets within the auth service
+- Leverages Cognito's token management and refresh capabilities
+
 ## Related Documentation
 
 ### Implementation Guide
@@ -386,6 +535,7 @@ sequenceDiagram
 | ------------------------- | ------------------------------------------------------------------------------------- |
 | API endpoints & tokens    | [Auth README](../services/auth/README.md#api-endpoints)                               |
 | Magic Link code flow      | [Magic Link Implementation](./magic-link-implementation.md#code-flow-overview)        |
+| Social Login flow         | [Auth README](../services/auth/README.md#social-login)                                |
 | URL structure             | [Auth README](../services/auth/README.md#url-structure)                               |
 | Environment variables     | [Auth README](../services/auth/README.md#environment-variables)                       |
 | Cognito triggers          | [Magic Link Implementation](./magic-link-implementation.md#cognito-custom-auth-flow)  |

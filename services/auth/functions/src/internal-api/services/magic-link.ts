@@ -1,7 +1,7 @@
 import {
+  AdminInitiateAuthCommand,
+  AdminRespondToAuthChallengeCommand,
   CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-  RespondToAuthChallengeCommand,
   type AuthFlowType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { calculateSecretHash } from '../utils/cognito.ts';
@@ -75,7 +75,8 @@ export class MagicLinkService {
 
       // Step 1: InitiateAuth with CUSTOM_AUTH
       const initiateResponse = await this.cognito.send(
-        new InitiateAuthCommand({
+        new AdminInitiateAuthCommand({
+          UserPoolId: this.config.userPoolId,
           ClientId: this.config.clientId,
           AuthFlow: 'CUSTOM_AUTH' as AuthFlowType,
           AuthParameters: {
@@ -91,7 +92,8 @@ export class MagicLinkService {
 
       // Step 2: Respond to PROVIDE_AUTH_PARAMETERS challenge
       const challengeResponse = await this.cognito.send(
-        new RespondToAuthChallengeCommand({
+        new AdminRespondToAuthChallengeCommand({
+          UserPoolId: this.config.userPoolId,
           ClientId: this.config.clientId,
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: initiateResponse.Session,
@@ -154,7 +156,8 @@ export class MagicLinkService {
 
       // Respond to the magic link challenge with the provided session
       const response = await this.cognito.send(
-        new RespondToAuthChallengeCommand({
+        new AdminRespondToAuthChallengeCommand({
+          UserPoolId: this.config.userPoolId,
           ClientId: this.config.clientId,
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: session,

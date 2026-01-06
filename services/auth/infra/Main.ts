@@ -6,6 +6,11 @@ import { serviceConfig, envConfig } from '@lib/sst-helpers';
 import { UserPool } from './cognito/UserPool.ts';
 import { CognitoTriggers } from './cognito/CognitoTriggers.ts';
 import { MagicLink } from './cognito/MagicLink.ts';
+import { SocialLogin } from './cognito/SocialLogin.ts';
+import {
+  CustomThreatProtectionMode,
+  FeaturePlan,
+} from 'aws-cdk-lib/aws-cognito';
 
 export function Main(context: StackContext) {
   const { stack, app } = context;
@@ -13,10 +18,7 @@ export function Main(context: StackContext) {
   const magicLinkKey = kms.Key.fromKeyArn(
     stack,
     'ImportedMagicLinkKmsKey',
-    envConfig.getValue(context, {
-      path: 'kms/key-arn',
-      id: 'auth-magic-link',
-    })
+    envConfig.getValue(context, { path: 'kms/key-arn', id: 'auth-magic-link' })
   );
 
   const mainEmailDomain = envConfig.getValue(context, {
@@ -45,6 +47,12 @@ export function Main(context: StackContext) {
         generateSecret: true,
       },
     },
+    cdk: {
+      userPool: {
+        featurePlan: FeaturePlan.PLUS,
+        customThreatProtectionMode: CustomThreatProtectionMode.FULL_FUNCTION,
+      },
+    },
   });
 
   // Get the user pool client
@@ -59,21 +67,6 @@ export function Main(context: StackContext) {
     userPool: mainUserPool.userPool,
     autoConfirmUsers: true,
     // logLevel: 'DEBUG',
-  });
-
-  // Configure magic link authentication
-  const magicLink = new MagicLink(stack, 'magic-link', {
-    cognitoTriggers,
-    allowedOrigins,
-    kmsKey: magicLinkKey,
-    ses: {
-      fromAddress: `noreply@${mainEmailDomain}`,
-      // Optional: specify region if SES is in a different region
-      // region: 'us-east-1',
-    },
-    // Optional configuration
-    // expiryDuration: Duration.minutes(15),
-    // minimumInterval: Duration.minutes(1),
   });
 
   // Create SST Config parameters for Cognito configuration
@@ -120,8 +113,11 @@ export function Main(context: StackContext) {
               effect: iam.Effect.ALLOW,
               actions: [
                 'cognito-idp:DescribeUserPoolClient',
-                'cognito-idp:InitiateAuth',
-                'cognito-idp:RespondToAuthChallenge',
+                'cognito-idp:AdminGetUser',
+                'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminSetUserPassword',
+                'cognito-idp:AdminInitiateAuth',
+                'cognito-idp:AdminRespondToAuthChallenge',
               ],
               resources: [mainUserPool.userPool.userPoolArn],
             }),
@@ -129,6 +125,32 @@ export function Main(context: StackContext) {
         },
       },
     },
+  });
+
+  // Configure magic link authentication
+  const magicLink = new MagicLink(stack, 'magic-link', {
+    cognitoTriggers,
+    allowedOrigins,
+    kmsKey: magicLinkKey,
+    ses: {
+      fromAddress: `noreply@${mainEmailDomain}`,
+      // Optional: specify region if SES is in a different region
+      // region: 'us-east-1',
+    },
+    // Optional configuration
+    // expiryDuration: Duration.minutes(15),
+    // minimumInterval: Duration.minutes(1),
+  });
+
+  // Configure social login (Google)
+  // Provider credentials are managed via SST Config (SSM Parameter Store):
+  //   - SOCIAL_GOOGLE_CLIENT_ID, SOCIAL_GOOGLE_CLIENT_SECRET
+  // Set CLIENT_ID to "NA" to disable a provider
+  new SocialLogin(stack, 'social-login', {
+    userPool: mainUserPool.userPool,
+    internalApi,
+    cognitoTriggers,
+    providers: ['google'],
   });
 
   // Publish the auth internal API URL for consuming services

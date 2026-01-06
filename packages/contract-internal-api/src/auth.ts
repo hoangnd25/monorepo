@@ -7,6 +7,22 @@ const UserSchema = z.object({
 });
 
 /**
+ * Supported social login providers
+ *
+ * Each provider can be individually enabled/disabled in the infrastructure configuration.
+ * - google: Google OAuth 2.0 (OpenID Connect)
+ * - apple: Sign in with Apple (OpenID Connect)
+ * - microsoft: Microsoft Identity Platform (OpenID Connect)
+ */
+export const SocialProviderSchema = z.enum([
+  'google',
+  'apple',
+  'microsoft',
+  'facebook',
+]);
+export type SocialProvider = z.infer<typeof SocialProviderSchema>;
+
+/**
  * Contract for getting user info by ID
  */
 export const getUser = oc
@@ -59,6 +75,51 @@ export const completeMagicLink = oc
   );
 
 /**
+ * Contract for initiating social login authentication
+ * Generates OAuth authorization URL for the specified provider
+ */
+export const initiateSocialLogin = oc
+  .route({ method: 'POST', path: '/social/initiate' })
+  .input(
+    z.object({
+      provider: SocialProviderSchema,
+      redirectUri: z.url('Invalid redirect URI'),
+      codeChallenge: z.string(), // PKCE code challenge (S256)
+    })
+  )
+  .output(
+    z.object({
+      authUrl: z.string(), // Provider's authorization URL
+      state: z.string(), // CSRF state token
+    })
+  );
+
+/**
+ * Contract for completing social login authentication
+ * Exchanges authorization code for tokens and issues Cognito tokens
+ */
+export const completeSocialLogin = oc
+  .route({ method: 'POST', path: '/social/complete' })
+  .input(
+    z.object({
+      provider: SocialProviderSchema,
+      code: z.string(), // Authorization code from OAuth callback
+      state: z.string(), // For CSRF validation
+      codeVerifier: z.string(), // PKCE code verifier
+      redirectUri: z.url('Invalid redirect URI'), // Must match initiate
+    })
+  )
+  .output(
+    z.object({
+      accessToken: z.string(),
+      idToken: z.string(),
+      refreshToken: z.string(),
+      expiresIn: z.number(),
+      tokenType: z.string(),
+    })
+  );
+
+/**
  * Internal API contract router
  */
 export const contract = {
@@ -68,6 +129,10 @@ export const contract = {
   magicLink: {
     initiate: initiateMagicLink,
     complete: completeMagicLink,
+  },
+  socialLogin: {
+    initiate: initiateSocialLogin,
+    complete: completeSocialLogin,
   },
 };
 

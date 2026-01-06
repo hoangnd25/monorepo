@@ -67,11 +67,18 @@ async function provideAuthParameters(
  */
 async function handleSignInMethod(
   event: CreateAuthChallengeTriggerEvent,
-  signInMethod: 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP'
+  signInMethod: 'MAGIC_LINK' | 'FIDO2' | 'SMS_OTP' | 'SOCIAL_LOGIN'
 ): Promise<void> {
   switch (signInMethod) {
     case 'MAGIC_LINK':
       await magicLink.addChallengeToEvent(event, logger);
+      break;
+    case 'SOCIAL_LOGIN':
+      // Social login challenge: client must provide a valid ID token from provider
+      event.response.challengeMetadata = 'SOCIAL_LOGIN';
+      event.response.publicChallengeParameters = {
+        challenge: 'PROVIDE_SOCIAL_ID_TOKEN',
+      };
       break;
     case 'FIDO2':
       await handleFido2Challenge(event);

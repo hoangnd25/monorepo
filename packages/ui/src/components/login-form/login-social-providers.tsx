@@ -1,4 +1,4 @@
-import { Button, Stack } from '../../chakra';
+import { Button, Spinner, Stack } from '../../chakra';
 
 export interface SocialProvider {
   id: string;
@@ -6,6 +6,7 @@ export interface SocialProvider {
   onClick?: () => void;
   show?: boolean;
   icon?: React.ReactNode;
+  loading?: boolean;
 }
 
 export interface LoginSocialProvidersProps {
@@ -38,9 +39,9 @@ export function LoginSocialProviders({
             variant="outline"
             size="lg"
             onClick={provider.onClick}
-            disabled={disabled}
+            disabled={disabled || provider.loading}
           >
-            {provider.icon}
+            {provider.loading ? <Spinner size="sm" /> : provider.icon}
             {provider.label}
           </Button>
         ))}

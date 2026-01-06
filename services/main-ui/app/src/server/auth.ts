@@ -1,5 +1,5 @@
 /**
- * Server-side authentication functions for magic link flow
+ * Server-side authentication functions for magic link and social login flows
  *
  * These functions run on the server and call the auth service internal API
  * using IAM-signed requests.
@@ -7,6 +7,8 @@
 
 import { createServerFn } from '@tanstack/react-start';
 import { useSession } from '@tanstack/react-start/server';
+import * as client from 'openid-client';
+import type { SocialProvider } from '@contract/internal-api/auth';
 import { authClient } from '~/internal-api/auth';
 
 // Session configuration for magic link flow
@@ -24,10 +26,18 @@ type AuthTokens = {
   tokenType: string;
 };
 
-type MagicLinkSessionData = {
+type SocialLoginSession = {
+  state: string;
+  codeVerifier: string;
+  provider: SocialProvider;
+  redirectUri: string;
+};
+
+type SessionData = {
   cognitoSession?: string;
   redirectPath?: string;
   authTokens?: AuthTokens;
+  socialLogin?: SocialLoginSession;
 };
 
 /**
@@ -48,7 +58,7 @@ export const initiateMagicLink = createServerFn({ method: 'POST' })
       });
 
       // Store session data in encrypted session cookie
-      const session = await useSession<MagicLinkSessionData>(sessionConfig);
+      const session = await useSession<SessionData>(sessionConfig);
       await session.update({
         cognitoSession: response.session,
         redirectPath: data.redirectPath || '/',
@@ -77,7 +87,7 @@ export const initiateMagicLink = createServerFn({ method: 'POST' })
  */
 export const getRedirectPath = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const session = await useSession<MagicLinkSessionData>(sessionConfig);
+    const session = await useSession<SessionData>(sessionConfig);
     return session.data.redirectPath || '/';
   }
 );
@@ -119,7 +129,7 @@ export const processMagicLink = createServerFn({ method: 'POST' })
       }
 
       // Get session
-      const session = await useSession<MagicLinkSessionData>(sessionConfig);
+      const session = await useSession<SessionData>(sessionConfig);
       let cognitoSession = session.data.cognitoSession;
 
       // Handle cross-browser case (no session cookie exists)
@@ -178,7 +188,135 @@ export const processMagicLink = createServerFn({ method: 'POST' })
  */
 export const getAuthTokens = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const session = await useSession<MagicLinkSessionData>(sessionConfig);
+    const session = await useSession<SessionData>(sessionConfig);
     return session.data.authTokens || null;
   }
 );
+
+// ============================================================================
+// Social Login Server Functions
+// ============================================================================
+
+/**
+ * Server function to initiate social login authentication
+ *
+ * Generates PKCE code verifier/challenge, calls auth service to get OAuth URL,
+ * and stores PKCE state in session cookie.
+ *
+ * @param provider - The social provider to use (e.g., 'google')
+ * @param redirectUri - The redirect URI for OAuth callback (where provider redirects back to)
+ * @param redirectPath - Path to redirect to after successful login
+ * @returns authUrl to redirect the user to, or error
+ */
+export const initiateSocialLogin = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (data: {
+      provider: SocialProvider;
+      redirectUri: string;
+      redirectPath?: string;
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    try {
+      // Generate PKCE code verifier and challenge
+      const codeVerifier = client.randomPKCECodeVerifier();
+      const codeChallenge =
+        await client.calculatePKCECodeChallenge(codeVerifier);
+
+      // Call auth service to get OAuth authorization URL
+      const response = await authClient.socialLogin.initiate({
+        provider: data.provider,
+        redirectUri: data.redirectUri,
+        codeChallenge,
+      });
+
+      // Store PKCE state and redirectUri in session cookie
+      const session = await useSession<SessionData>(sessionConfig);
+      await session.update({
+        ...session.data,
+        socialLogin: {
+          state: response.state,
+          codeVerifier,
+          provider: data.provider,
+          redirectUri: data.redirectUri,
+        },
+        redirectPath: data.redirectPath || '/',
+      });
+
+      return {
+        success: true as const,
+        authUrl: response.authUrl,
+      };
+    } catch (error) {
+      console.error('Error initiating social login:', error);
+      return {
+        success: false as const,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to initiate social login. Please try again.',
+      };
+    }
+  });
+
+/**
+ * Server function to process social login callback
+ *
+ * Verifies state, exchanges authorization code for tokens via auth service,
+ * and stores tokens in session.
+ *
+ * @param code - Authorization code from OAuth callback
+ * @param state - State parameter from OAuth callback (for CSRF validation)
+ * @returns Success with redirect path, or error
+ */
+export const processSocialCallback = createServerFn({ method: 'POST' })
+  .inputValidator((data: { code: string; state: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // Get session with stored PKCE state
+      const session = await useSession<SessionData>(sessionConfig);
+      const { socialLogin, redirectPath } = session.data;
+
+      // Validate state (CSRF protection)
+      if (!socialLogin?.state || socialLogin.state !== data.state) {
+        return {
+          success: false as const,
+          error: 'Invalid state parameter. Please try logging in again.',
+        };
+      }
+
+      // Call auth service to complete social login
+      const response = await authClient.socialLogin.complete({
+        provider: socialLogin.provider,
+        code: data.code,
+        state: data.state,
+        codeVerifier: socialLogin.codeVerifier,
+        redirectUri: socialLogin.redirectUri,
+      });
+
+      // Store tokens and clear social login session data
+      await session.update({
+        cognitoSession: undefined,
+        redirectPath: undefined,
+        socialLogin: undefined,
+        authTokens: {
+          accessToken: response.accessToken,
+          idToken: response.idToken,
+          refreshToken: response.refreshToken,
+          expiresIn: response.expiresIn,
+          tokenType: response.tokenType,
+        },
+      });
+
+      return { success: true as const, redirectPath: redirectPath || '/' };
+    } catch (error) {
+      console.error('Error processing social callback:', error);
+      return {
+        success: false as const,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to complete social login. Please try again.',
+      };
+    }
+  });

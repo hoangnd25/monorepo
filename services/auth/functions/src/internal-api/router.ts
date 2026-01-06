@@ -1,6 +1,7 @@
 import { implement } from '@orpc/server';
 import { contract } from '@contract/internal-api/auth';
 import { withMagicLinkService } from './middleware/magic-link.ts';
+import { withSocialLoginService } from './middleware/social-login.ts';
 
 // ============================================================================
 // Procedures
@@ -40,6 +41,30 @@ const completeMagicLink = implement(contract.magicLink.complete)
   });
 
 /**
+ * Initiate social login authentication flow
+ *
+ * Generates OAuth authorization URL for the specified provider (Google).
+ * Uses withSocialLoginService middleware to inject SocialLoginService into context.
+ */
+const initiateSocialLogin = implement(contract.socialLogin.initiate)
+  .use(withSocialLoginService)
+  .handler(async ({ input, context }) => {
+    return context.socialLoginService.initiate(input);
+  });
+
+/**
+ * Complete social login authentication flow
+ *
+ * Exchanges authorization code for tokens and issues Cognito tokens.
+ * Uses withSocialLoginService middleware to inject SocialLoginService into context.
+ */
+const completeSocialLogin = implement(contract.socialLogin.complete)
+  .use(withSocialLoginService)
+  .handler(async ({ input, context }) => {
+    return context.socialLoginService.complete(input);
+  });
+
+/**
  * Auth service internal API router implementing the contract
  */
 export const router = {
@@ -49,6 +74,10 @@ export const router = {
   magicLink: {
     initiate: initiateMagicLink,
     complete: completeMagicLink,
+  },
+  socialLogin: {
+    initiate: initiateSocialLogin,
+    complete: completeSocialLogin,
   },
 };
 

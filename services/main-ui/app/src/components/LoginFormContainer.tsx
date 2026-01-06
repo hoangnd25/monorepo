@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LoginForm } from '@lib/ui';
 import { FaGoogle } from 'react-icons/fa';
-import { initiateMagicLink } from '~/server/auth';
+import { initiateMagicLink, initiateSocialLogin } from '~/server/auth';
 
 export interface LoginFormContainerProps {
   /**
@@ -31,6 +31,7 @@ export function LoginFormContainer({
   onSuccess,
 }: LoginFormContainerProps) {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleMagicLinkRequest = async (email: string) => {
     setErrorMessage(undefined);
@@ -62,9 +63,34 @@ export function LoginFormContainer({
     }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: Implement Google OAuth flow
-    console.warn('Google login not yet implemented');
+  const handleGoogleLogin = async () => {
+    setErrorMessage(undefined);
+    setIsGoogleLoading(true);
+
+    try {
+      // Construct the redirect URI from the current origin
+      const redirectUri = `${window.location.origin}/auth/social/callback`;
+
+      const result = await initiateSocialLogin({
+        data: {
+          provider: 'google',
+          redirectUri,
+          redirectPath,
+        },
+      });
+
+      if (result.success) {
+        // Redirect to Google OAuth URL
+        window.location.href = result.authUrl;
+      } else {
+        setErrorMessage(result.error || 'Failed to initiate Google login');
+        setIsGoogleLoading(false);
+      }
+    } catch (error) {
+      console.error('Error initiating Google login:', error);
+      setErrorMessage('An unexpected error occurred. Please try again.');
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -82,6 +108,7 @@ export function LoginFormContainer({
           icon: <FaGoogle />,
           onClick: handleGoogleLogin,
           show: true,
+          loading: isGoogleLoading,
         },
       ]}
       magicLink={{

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-  RespondToAuthChallengeCommand,
+  AdminInitiateAuthCommand,
+  AdminRespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { MagicLinkService } from './magic-link.ts';
 
@@ -26,14 +26,14 @@ describe('MagicLinkService', () => {
       const email = 'test@example.com';
       const redirectUri = 'https://example.com/auth/magic-link';
 
-      // Mock the InitiateAuth response
-      cognitoMock.on(InitiateAuthCommand).resolves({
+      // Mock the AdminInitiateAuth response
+      cognitoMock.on(AdminInitiateAuthCommand).resolves({
         Session: 'initial-session-token',
         ChallengeName: 'CUSTOM_CHALLENGE',
       });
 
-      // Mock the RespondToAuthChallenge response
-      cognitoMock.on(RespondToAuthChallengeCommand).resolves({
+      // Mock the AdminRespondToAuthChallenge response
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).resolves({
         Session: 'challenge-session-token',
         ChallengeName: 'CUSTOM_CHALLENGE',
       });
@@ -45,10 +45,11 @@ describe('MagicLinkService', () => {
         message: 'Magic link sent to your email. Please check your inbox.',
       });
 
-      // Verify InitiateAuth was called correctly
-      const initiateCalls = cognitoMock.commandCalls(InitiateAuthCommand);
+      // Verify AdminInitiateAuth was called correctly
+      const initiateCalls = cognitoMock.commandCalls(AdminInitiateAuthCommand);
       expect(initiateCalls).toHaveLength(1);
       expect(initiateCalls[0].args[0].input).toMatchObject({
+        UserPoolId: 'us-east-1_TEST123',
         ClientId: 'test-client-id',
         AuthFlow: 'CUSTOM_AUTH',
         AuthParameters: {
@@ -57,12 +58,13 @@ describe('MagicLinkService', () => {
         },
       });
 
-      // Verify RespondToAuthChallenge was called correctly
+      // Verify AdminRespondToAuthChallenge was called correctly
       const challengeCalls = cognitoMock.commandCalls(
-        RespondToAuthChallengeCommand
+        AdminRespondToAuthChallengeCommand
       );
       expect(challengeCalls).toHaveLength(1);
       expect(challengeCalls[0].args[0].input).toMatchObject({
+        UserPoolId: 'us-east-1_TEST123',
         ClientId: 'test-client-id',
         ChallengeName: 'CUSTOM_CHALLENGE',
         Session: 'initial-session-token',
@@ -83,7 +85,7 @@ describe('MagicLinkService', () => {
       const email = 'test@example.com';
       const redirectUri = 'https://example.com/auth/magic-link';
 
-      cognitoMock.on(InitiateAuthCommand).resolves({
+      cognitoMock.on(AdminInitiateAuthCommand).resolves({
         // No Session field
       });
 
@@ -96,12 +98,12 @@ describe('MagicLinkService', () => {
       const email = 'test@example.com';
       const redirectUri = 'https://example.com/auth/magic-link';
 
-      cognitoMock.on(InitiateAuthCommand).resolves({
+      cognitoMock.on(AdminInitiateAuthCommand).resolves({
         Session: 'initial-session-token',
         ChallengeName: 'CUSTOM_CHALLENGE',
       });
 
-      cognitoMock.on(RespondToAuthChallengeCommand).resolves({
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).resolves({
         // No Session field
       });
 
@@ -119,7 +121,7 @@ describe('MagicLinkService', () => {
       const messageB64 = Buffer.from(message).toString('base64url');
       const secret = `${messageB64}.signature`;
 
-      cognitoMock.on(RespondToAuthChallengeCommand).resolves({
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).resolves({
         AuthenticationResult: {
           AccessToken: 'access-token-123',
           IdToken: 'id-token-456',
@@ -139,12 +141,13 @@ describe('MagicLinkService', () => {
         tokenType: 'Bearer',
       });
 
-      // Verify RespondToAuthChallenge was called correctly
+      // Verify AdminRespondToAuthChallenge was called correctly
       const challengeCalls = cognitoMock.commandCalls(
-        RespondToAuthChallengeCommand
+        AdminRespondToAuthChallengeCommand
       );
       expect(challengeCalls).toHaveLength(1);
       expect(challengeCalls[0].args[0].input).toMatchObject({
+        UserPoolId: 'us-east-1_TEST123',
         ClientId: 'test-client-id',
         ChallengeName: 'CUSTOM_CHALLENGE',
         Session: session,
@@ -167,7 +170,7 @@ describe('MagicLinkService', () => {
       const messageB64 = Buffer.from(message).toString('base64url');
       const secret = `${messageB64}.signature`;
 
-      cognitoMock.on(RespondToAuthChallengeCommand).resolves({
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).resolves({
         AuthenticationResult: {
           AccessToken: 'access-token-123',
           IdToken: 'id-token-456',
@@ -187,12 +190,13 @@ describe('MagicLinkService', () => {
         tokenType: 'Bearer',
       });
 
-      // Verify RespondToAuthChallenge was called with redirectUri in metadata
+      // Verify AdminRespondToAuthChallenge was called with redirectUri in metadata
       const challengeCalls = cognitoMock.commandCalls(
-        RespondToAuthChallengeCommand
+        AdminRespondToAuthChallengeCommand
       );
       expect(challengeCalls).toHaveLength(1);
       expect(challengeCalls[0].args[0].input).toMatchObject({
+        UserPoolId: 'us-east-1_TEST123',
         ClientId: 'test-client-id',
         ChallengeName: 'CUSTOM_CHALLENGE',
         Session: session,
@@ -215,7 +219,7 @@ describe('MagicLinkService', () => {
       const messageB64 = Buffer.from(message).toString('base64url');
       const secret = `${messageB64}.signature`;
 
-      cognitoMock.on(RespondToAuthChallengeCommand).resolves({
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).resolves({
         AuthenticationResult: {
           // Missing required tokens
         },
@@ -235,7 +239,7 @@ describe('MagicLinkService', () => {
       const error = new Error('Invalid session');
       error.name = 'NotAuthorizedException';
 
-      cognitoMock.on(RespondToAuthChallengeCommand).rejects(error);
+      cognitoMock.on(AdminRespondToAuthChallengeCommand).rejects(error);
 
       await expect(service.complete({ session, secret })).rejects.toThrow(
         'Invalid or expired magic link. Please request a new one.'
