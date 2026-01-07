@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { calculateSecretHash } from '../utils/cognito.ts';
 import { getCognitoConfig } from '../utils/cognito-config.ts';
+import type { CognitoContextData } from '@contract/internal-api/auth';
 
 // ============================================================================
 // Types
@@ -18,8 +19,10 @@ export interface MagicLinkConfig {
 }
 
 export interface InitiateMagicLinkInput {
-  email: string;
+  username: string;
   redirectUri: string;
+  contextData?: CognitoContextData;
+  alreadyHaveMagicLink?: boolean;
 }
 
 export interface InitiateMagicLinkOutput {
@@ -31,6 +34,7 @@ export interface CompleteMagicLinkInput {
   session: string; // Required - main-ui handles cross-browser before calling
   secret: string;
   redirectUri?: string;
+  contextData?: CognitoContextData;
 }
 
 export interface CompleteMagicLinkOutput {
@@ -63,12 +67,12 @@ export class MagicLinkService {
   async initiate(
     input: InitiateMagicLinkInput
   ): Promise<InitiateMagicLinkOutput> {
-    const { email, redirectUri } = input;
+    const { username, redirectUri, contextData } = input;
 
     try {
       // Calculate SECRET_HASH for client authentication
       const secretHash = calculateSecretHash(
-        email,
+        username,
         this.config.clientId,
         this.config.clientSecret
       );
@@ -80,14 +84,22 @@ export class MagicLinkService {
           ClientId: this.config.clientId,
           AuthFlow: 'CUSTOM_AUTH' as AuthFlowType,
           AuthParameters: {
-            USERNAME: email,
+            USERNAME: username,
             SECRET_HASH: secretHash,
           },
+          ContextData: contextData,
         })
       );
 
       if (!initiateResponse.Session) {
         throw new Error('Failed to initiate authentication');
+      }
+
+      if (input.alreadyHaveMagicLink) {
+        return {
+          session: initiateResponse.Session,
+          message: 'Please check your email for the magic link to continue.',
+        };
       }
 
       // Step 2: Respond to PROVIDE_AUTH_PARAMETERS challenge
@@ -98,7 +110,7 @@ export class MagicLinkService {
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: initiateResponse.Session,
           ChallengeResponses: {
-            USERNAME: email,
+            USERNAME: username,
             ANSWER: '__dummy__',
             SECRET_HASH: secretHash,
           },
@@ -107,6 +119,7 @@ export class MagicLinkService {
             redirectUri,
             alreadyHaveMagicLink: 'no',
           },
+          ContextData: contextData,
         })
       );
 
@@ -137,7 +150,7 @@ export class MagicLinkService {
   async complete(
     input: CompleteMagicLinkInput & { redirectUri?: string }
   ): Promise<CompleteMagicLinkOutput> {
-    const { session, secret, redirectUri } = input;
+    const { session, secret, redirectUri, contextData } = input;
 
     try {
       // Extract email from secret for SECRET_HASH calculation
@@ -145,11 +158,11 @@ export class MagicLinkService {
       const message = JSON.parse(
         Buffer.from(messageB64, 'base64url').toString()
       );
-      const email = message.userName;
+      const username = message.userName;
 
       // Calculate SECRET_HASH
       const secretHash = calculateSecretHash(
-        email,
+        username,
         this.config.clientId,
         this.config.clientSecret
       );
@@ -162,7 +175,7 @@ export class MagicLinkService {
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: session,
           ChallengeResponses: {
-            USERNAME: email,
+            USERNAME: username,
             ANSWER: secret,
             SECRET_HASH: secretHash,
           },
@@ -171,6 +184,7 @@ export class MagicLinkService {
             ...(redirectUri && { redirectUri }),
             alreadyHaveMagicLink: 'yes',
           },
+          ContextData: contextData,
         })
       );
 

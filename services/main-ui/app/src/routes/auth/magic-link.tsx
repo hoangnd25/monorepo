@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Box, Card, Center, Heading, Spinner, Text, VStack } from '@lib/ui';
 import { processMagicLink } from '~/server/auth';
+import { useCognitoContextData } from '~/hooks/useCognitoContextData';
 
 export const Route = createFileRoute('/auth/magic-link')({
   // No validateSearch - we parse hash fragment on client side
@@ -19,6 +20,7 @@ function RouteComponent() {
     'loading'
   );
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const { getEncodedData, isCognitoContextReady } = useCognitoContextData();
 
   useEffect(() => {
     const completeAuth = async () => {
@@ -26,8 +28,26 @@ function RouteComponent() {
       const hash = window.location.hash.slice(1); // Remove leading '#'
       const redirectUri = `${window.location.origin}/auth/magic-link`;
 
+      // Extract username from hash for device fingerprinting
+      // The hash format is: base64url(JSON).signature
+      let username = '';
+      try {
+        const [messageB64] = hash.split('.');
+        if (messageB64) {
+          const message = JSON.parse(
+            atob(messageB64.replace(/-/g, '+').replace(/_/g, '/'))
+          );
+          username = message.userName || '';
+        }
+      } catch {
+        // If parsing fails, proceed without username (fingerprint will be less accurate)
+      }
+
+      // Collect device fingerprint data for Cognito adaptive authentication
+      const encodedData = getEncodedData(username);
+
       const result = await processMagicLink({
-        data: { hash, redirectUri },
+        data: { hash, redirectUri, encodedData },
       });
 
       if (result.success) {
@@ -45,8 +65,8 @@ function RouteComponent() {
       }
     };
 
-    completeAuth();
-  }, []);
+    isCognitoContextReady && completeAuth();
+  }, [getEncodedData, isCognitoContextReady]);
 
   return (
     <Center minH="100vh" bg="gray.50">

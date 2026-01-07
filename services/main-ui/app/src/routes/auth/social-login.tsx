@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import * as z from 'zod';
 import { Box, Card, Center, Heading, Spinner, Text, VStack } from '@lib/ui';
 import { processSocialCallback } from '~/server/auth';
+import { useCognitoContextData } from '~/hooks/useCognitoContextData';
 
 // OAuth callback can have either success params (code, state) or error params
 const searchSchema = z.object({
@@ -62,6 +63,7 @@ function RouteComponent() {
   );
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [isPopup] = useState(() => isPopupWindow());
+  const { getEncodedData, isCognitoContextReady } = useCognitoContextData();
 
   useEffect(() => {
     const completeAuth = async () => {
@@ -97,10 +99,15 @@ function RouteComponent() {
       }
 
       // Process the callback with auth service
+      // Collect device fingerprint data for Cognito adaptive authentication
+      // For social login callback, we don't know the email yet, so pass empty string
+      const encodedData = getEncodedData('');
+
       const result = await processSocialCallback({
         data: {
           code: search.code,
           state: search.state,
+          encodedData,
         },
       });
 
@@ -131,8 +138,8 @@ function RouteComponent() {
       }
     };
 
-    completeAuth();
-  }, [search, isPopup]);
+    isCognitoContextReady && completeAuth();
+  }, [search, isPopup, getEncodedData, isCognitoContextReady]);
 
   return (
     <Center minH="100vh" bg="gray.50">

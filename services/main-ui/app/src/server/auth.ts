@@ -6,10 +6,62 @@
  */
 
 import { createServerFn } from '@tanstack/react-start';
-import { useSession } from '@tanstack/react-start/server';
+import {
+  getRequest,
+  getRequestIP,
+  getRequestUrl,
+  useSession,
+} from '@tanstack/react-start/server';
 import * as client from 'openid-client';
-import type { SocialProvider } from '@contract/internal-api/auth';
+import { ServiceConfig } from '@lib/sst-constructs/node/service-config';
+import type {
+  CognitoContextData,
+  CognitoContextHttpHeader,
+  SocialProvider,
+} from '@contract/internal-api/auth';
 import { authClient } from '~/internal-api/auth';
+
+/**
+ * Build Cognito context data for adaptive authentication
+ *
+ * Extracts real values from the current request including:
+ * - HTTP headers (user-agent, accept-language, referer, origin)
+ * - Client IP address (from proxy headers or direct connection)
+ * - Server name and path from the request URL
+ *
+ * Only includes encodedData if it has a value (not undefined/empty).
+ *
+ * @param options.encodedData - Device fingerprint from Cognito Advanced Security library
+ * @returns CognitoContextData object ready to be sent to auth service
+ */
+function buildContextData(options: {
+  encodedData?: string;
+}): CognitoContextData | undefined {
+  const request = getRequest();
+  const url = getRequestUrl({ xForwardedHost: true });
+
+  // Extract relevant headers for Cognito context
+  const httpHeaders: Array<CognitoContextHttpHeader> = [];
+  request.headers.entries().map(([headerName, headerValue]) => {
+    httpHeaders.push({ headerName, headerValue });
+  });
+
+  const ipAddress = getRequestIP({ xForwardedFor: true }) || '127.0.0.1';
+
+  const contextData: CognitoContextData = {
+    HttpHeaders: httpHeaders,
+    IpAddress: ipAddress,
+    ServerName: url.hostname,
+    ServerPath: url.pathname,
+  };
+
+  // Only include EncodedData if it has a value
+  if (options.encodedData) {
+    contextData.EncodedData = options.encodedData;
+  }
+
+  return contextData;
+}
 
 // Session configuration for magic link flow
 const sessionConfig = {
@@ -49,14 +101,22 @@ type SessionData = {
  */
 export const initiateMagicLink = createServerFn({ method: 'POST' })
   .inputValidator(
-    (data: { email: string; redirectUri: string; redirectPath?: string }) =>
-      data
+    (data: {
+      email: string;
+      redirectUri: string;
+      redirectPath?: string;
+      /** Device fingerprint from Cognito Advanced Security library */
+      encodedData?: string;
+    }) => data
   )
   .handler(async ({ data }) => {
     try {
       const response = await authClient.magicLink.initiate({
-        email: data.email,
+        username: data.email,
         redirectUri: data.redirectUri,
+        contextData: buildContextData({
+          encodedData: data.encodedData,
+        }),
       });
 
       // Store session data in encrypted session cookie
@@ -184,9 +244,17 @@ function extractUserFromIdToken(payload: IdTokenPayload): User {
  *
  * @param hash - The URL hash fragment (without #) containing the magic link secret
  * @param redirectUri - The redirect URI for cross-browser fallback (e.g., https://example.com/auth/magic-link)
+ * @param EncodedData - Device fingerprint from Cognito Advanced Security library
  */
 export const processMagicLink = createServerFn({ method: 'POST' })
-  .inputValidator((data: { hash: string; redirectUri: string }) => data)
+  .inputValidator(
+    (data: {
+      hash: string;
+      redirectUri: string;
+      /** Device fingerprint from Cognito Advanced Security library */
+      encodedData?: string;
+    }) => data
+  )
   .handler(async ({ data }) => {
     try {
       // Validate hash exists
@@ -198,13 +266,13 @@ export const processMagicLink = createServerFn({ method: 'POST' })
       }
 
       // Parse hash to extract email (for cross-browser fallback)
-      let email: string;
+      let username: string;
       try {
         const [messageB64] = data.hash.split('.');
         const message = JSON.parse(
           Buffer.from(messageB64, 'base64url').toString()
         );
-        email = message.userName;
+        username = message.userName;
       } catch {
         return { success: false as const, error: 'Invalid magic link format' };
       }
@@ -212,13 +280,17 @@ export const processMagicLink = createServerFn({ method: 'POST' })
       // Get session
       const session = await useSession<SessionData>(sessionConfig);
       let cognitoSession = session.data.cognitoSession;
-
       // Handle cross-browser case (no session cookie exists)
+
       if (!cognitoSession) {
         try {
           const initiateResponse = await authClient.magicLink.initiate({
-            email,
+            username,
             redirectUri: data.redirectUri,
+            alreadyHaveMagicLink: true,
+            contextData: buildContextData({
+              encodedData: data.encodedData,
+            }),
           });
           cognitoSession = initiateResponse.session;
         } catch {
@@ -229,11 +301,19 @@ export const processMagicLink = createServerFn({ method: 'POST' })
         }
       }
 
-      // Complete magic link authentication
-      const response = await authClient.magicLink.complete({
-        session: cognitoSession,
-        secret: data.hash,
-      });
+      // // Complete magic link authentication
+      const response = await authClient.magicLink
+        .complete({
+          session: cognitoSession,
+          secret: data.hash,
+          contextData: buildContextData({
+            encodedData: data.encodedData,
+          }),
+        })
+        .catch((error) => {
+          console.error('Magic link completion error:', JSON.stringify(error));
+          throw error;
+        });
 
       // Store tokens in session & clear auth session data
       const redirectPath = session.data.redirectPath || '/';
@@ -334,6 +414,7 @@ export const initiateSocialLogin = createServerFn({ method: 'POST' })
       provider: SocialProvider;
       redirectUri: string;
       redirectPath?: string;
+      encodedData?: string;
     }) => data
   )
   .handler(async ({ data }) => {
@@ -348,6 +429,7 @@ export const initiateSocialLogin = createServerFn({ method: 'POST' })
         provider: data.provider,
         redirectUri: data.redirectUri,
         codeChallenge,
+        contextData: buildContextData({ encodedData: data.encodedData }),
       });
 
       // Store PKCE state and redirectUri in session cookie
@@ -387,10 +469,13 @@ export const initiateSocialLogin = createServerFn({ method: 'POST' })
  *
  * @param code - Authorization code from OAuth callback
  * @param state - State parameter from OAuth callback (for CSRF validation)
+ * @param encodedData - Device fingerprint from Cognito Advanced Security library
  * @returns Success with redirect path, or error
  */
 export const processSocialCallback = createServerFn({ method: 'POST' })
-  .inputValidator((data: { code: string; state: string }) => data)
+  .inputValidator(
+    (data: { code: string; state: string; encodedData?: string }) => data
+  )
   .handler(async ({ data }) => {
     try {
       // Get session with stored PKCE state
@@ -412,6 +497,7 @@ export const processSocialCallback = createServerFn({ method: 'POST' })
         state: data.state,
         codeVerifier: socialLogin.codeVerifier,
         redirectUri: socialLogin.redirectUri,
+        contextData: buildContextData({ encodedData: data.encodedData }),
       });
 
       // Store tokens and clear social login session data
@@ -526,3 +612,23 @@ export const logout = createServerFn({ method: 'POST' }).handler(async () => {
 
   return { success: true };
 });
+
+/**
+ * Server function to get Cognito configuration for device fingerprinting
+ *
+ * Returns the User Pool ID and Client ID needed by the Cognito Advanced Security
+ * library for adaptive authentication. These are public identifiers (not secrets).
+ */
+export const getCognitoConfig = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const [userPoolId, clientId] = await Promise.all([
+      ServiceConfig.CognitoUserPoolId,
+      ServiceConfig.CognitoClientId,
+    ]);
+
+    return {
+      userPoolId: userPoolId || null,
+      clientId: clientId || null,
+    };
+  }
+);

@@ -1,4 +1,4 @@
-import { Api, Config, StackContext } from 'sst/constructs';
+import { Api, Config, StackContext, toCdkDuration } from 'sst/constructs';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
@@ -7,10 +7,6 @@ import { UserPool } from './cognito/UserPool.ts';
 import { CognitoTriggers } from './cognito/CognitoTriggers.ts';
 import { MagicLink } from './cognito/MagicLink.ts';
 import { SocialLogin } from './cognito/SocialLogin.ts';
-import {
-  CustomThreatProtectionMode,
-  FeaturePlan,
-} from 'aws-cdk-lib/aws-cognito';
 
 export function Main(context: StackContext) {
   const { stack, app } = context;
@@ -45,12 +41,8 @@ export function Main(context: StackContext) {
     clients: {
       main: {
         generateSecret: true,
-      },
-    },
-    cdk: {
-      userPool: {
-        featurePlan: FeaturePlan.PLUS,
-        customThreatProtectionMode: CustomThreatProtectionMode.FULL_FUNCTION,
+        accessTokenValidity: toCdkDuration('30 minutes'),
+        idTokenValidity: toCdkDuration('30 minutes'),
       },
     },
   });
@@ -157,6 +149,18 @@ export function Main(context: StackContext) {
   serviceConfig.createParameter(context, {
     path: 'auth/internal-api-url',
     value: internalApi.url + '/auth',
+  });
+
+  // Publish Cognito User Pool ID and Client ID for client-side device fingerprinting
+  // These are public identifiers (not secrets) used by the Cognito Advanced Security library
+  serviceConfig.createParameter(context, {
+    path: 'auth/cognito-user-pool-id',
+    value: mainUserPool.userPool.userPoolId,
+  });
+
+  serviceConfig.createParameter(context, {
+    path: 'auth/cognito-client-id',
+    value: userPoolClient.userPoolClientId,
   });
 
   stack.addOutputs({

@@ -31,7 +31,7 @@ describe('Auth Service', () => {
       const testRedirectUri = 'http://localhost:3000/auth/callback';
 
       const response = await authClient.magicLink.initiate({
-        email: testEmail,
+        username: testEmail,
         redirectUri: testRedirectUri,
       });
       // Verify response structure matches contract

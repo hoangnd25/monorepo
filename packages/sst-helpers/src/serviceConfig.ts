@@ -24,6 +24,8 @@ export const SharedResource = {
   },
   auth: {
     INTERNAL_API_URL: 'internal-api-url',
+    COGNITO_USER_POOL_ID: 'cognito-user-pool-id',
+    COGNITO_CLIENT_ID: 'cognito-client-id',
   },
 } as const satisfies Record<ServiceNameValue, Record<string, string>>;
 

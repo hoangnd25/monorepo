@@ -15,5 +15,11 @@ declare module 'sst/node/config' {
     AuthInternalApiUrl: {
       value: string;
     };
+    CognitoUserPoolId: {
+      value: string;
+    };
+    CognitoClientId: {
+      value: string;
+    };
   }
 }

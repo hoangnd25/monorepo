@@ -33,6 +33,11 @@ export class UserPool extends Construct {
   private createUserPool() {
     this.userPool = new cognito.UserPool(this, `UserPool-${this.id}`, {
       userPoolName: this.app.logicalPrefixedName(`${this.id}`),
+      featurePlan: cognito.FeaturePlan.PLUS,
+      customThreatProtectionMode:
+        cognito.CustomThreatProtectionMode.FULL_FUNCTION,
+      standardThreatProtectionMode:
+        cognito.StandardThreatProtectionMode.FULL_FUNCTION,
       passwordPolicy: {
         minLength: 8,
         requireDigits: true,
@@ -41,12 +46,30 @@ export class UserPool extends Construct {
         requireSymbols: true,
         ...this.props.cdk?.userPool?.passwordPolicy,
       },
+      standardAttributes: {
+        email: {
+          mutable: true,
+          required: true,
+        },
+        preferredUsername: {
+          mutable: true,
+          required: false,
+        },
+      },
       signInAliases: {
         username: true,
         phone: true,
         preferredUsername: true,
         email: true,
         ...this.props.cdk?.userPool?.signInAliases,
+      },
+      selfSignUpEnabled: false,
+      signInCaseSensitive: false,
+      mfa: cognito.Mfa.OPTIONAL,
+      mfaSecondFactor: {
+        email: false,
+        sms: true,
+        otp: true,
       },
       removalPolicy: removalPolicy.retainForPermanentStage({
         stack: this.stack,
@@ -71,6 +94,11 @@ export class UserPool extends Construct {
           ...clientProps.authFlows,
         },
         preventUserExistenceErrors: true,
+        // Enable propagation of additional user context data for adaptive authentication
+        // This allows passing IP address and device fingerprint to Cognito threat protection
+        // Requires generateSecret: true (set by clientProps in Main.ts)
+        enablePropagateAdditionalUserContextData:
+          clientProps.generateSecret === true,
         ...clientProps,
       });
 

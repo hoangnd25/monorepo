@@ -40,7 +40,27 @@ interface RootDocumentProps {
   initialAuthStatus: AuthStatus;
 }
 
+/**
+ * Load Amazon Cognito Advanced Security script on client only.
+ * This script is used for device fingerprinting in adaptive authentication.
+ * Loading client-side avoids SSR hydration mismatches from injected classes.
+ */
+function useCognitoAdvancedSecurity() {
+  useEffect(() => {
+    const scriptId = 'cognito-advanced-security';
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src =
+      'https://amazon-cognito-assets.us-east-1.amazoncognito.com/amazon-cognito-advanced-security-data.min.js';
+    document.body.appendChild(script);
+  }, []);
+}
+
 function RootDocument({ children, initialAuthStatus }: RootDocumentProps) {
+  useCognitoAdvancedSecurity();
+
   return (
     <html lang="en">
       <head>

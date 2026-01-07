@@ -21,6 +21,15 @@ export function Main(context: StackContext, props?: MainProps) {
     path: 'auth/internal-api-url',
   });
 
+  // Import Cognito User Pool ID and Client ID for device fingerprinting
+  // These are public identifiers (not secrets) used by the Cognito Advanced Security library
+  const cognitoUserPoolId = new ServiceConfig(stack, 'CognitoUserPoolId', {
+    path: 'auth/cognito-user-pool-id',
+  });
+  const cognitoClientId = new ServiceConfig(stack, 'CognitoClientId', {
+    path: 'auth/cognito-client-id',
+  });
+
   const mainSite = new NitroSite(stack, 'MainSite', {
     path: appPath,
     buildCommand: 'pnpm build:app',
@@ -28,7 +37,7 @@ export function Main(context: StackContext, props?: MainProps) {
       deploy: false,
       url: 'http://localhost:3000',
     },
-    bind: [authInternalApiUrl],
+    bind: [authInternalApiUrl, cognitoUserPoolId, cognitoClientId],
     permissions: [
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,

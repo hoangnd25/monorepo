@@ -18,6 +18,7 @@ import {
   AdminInitiateAuthCommand,
   AdminRespondToAuthChallengeCommand,
   UserNotFoundException,
+  type ContextDataType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { randomUUID } from 'crypto';
 import { calculateSecretHash } from '../utils/cognito.ts';
@@ -30,6 +31,7 @@ import {
   type ProviderRuntimeConfig,
   getEnabledProviders,
 } from '../../shared/social-providers.ts';
+import type { CognitoContextData } from '@contract/internal-api/auth';
 
 // ============================================================================
 // Types
@@ -42,6 +44,7 @@ export interface InitiateSocialLoginInput {
   provider: SocialProvider;
   redirectUri: string;
   codeChallenge: string;
+  contextData?: CognitoContextData;
 }
 
 export interface InitiateSocialLoginOutput {
@@ -55,6 +58,7 @@ export interface CompleteSocialLoginInput {
   state: string;
   codeVerifier: string;
   redirectUri: string;
+  contextData?: CognitoContextData;
 }
 
 export interface CompleteSocialLoginOutput {
@@ -204,7 +208,12 @@ export class SocialLoginService {
     // Find or create Cognito user, then issue tokens
     await this.findOrCreateUser(email);
 
-    return this.issueCognitoTokens(email, socialIdToken, input.provider);
+    return this.issueCognitoTokens(
+      email,
+      socialIdToken,
+      input.provider,
+      input.contextData
+    );
   }
 
   /**
@@ -225,7 +234,7 @@ export class SocialLoginService {
         await this.cognito.send(
           new AdminCreateUserCommand({
             UserPoolId: this.cognitoConfig.userPoolId,
-            Username: email,
+            Username: randomUUID(),
             UserAttributes: [
               { Name: 'email', Value: email },
               { Name: 'email_verified', Value: 'true' },
@@ -256,7 +265,8 @@ export class SocialLoginService {
   private async issueCognitoTokens(
     username: string,
     socialIdToken: string,
-    provider: SocialProvider
+    provider: SocialProvider,
+    contextData?: ContextDataType
   ): Promise<CompleteSocialLoginOutput> {
     const secretHash = calculateSecretHash(
       username,
@@ -274,6 +284,7 @@ export class SocialLoginService {
           USERNAME: username,
           SECRET_HASH: secretHash,
         },
+        ContextData: contextData,
       })
     );
 
@@ -297,6 +308,7 @@ export class SocialLoginService {
           signInMethod: 'SOCIAL_LOGIN',
           socialProvider: provider,
         },
+        ContextData: contextData,
       })
     );
 

@@ -38,7 +38,7 @@ describe('MagicLinkService', () => {
         ChallengeName: 'CUSTOM_CHALLENGE',
       });
 
-      const result = await service.initiate({ email, redirectUri });
+      const result = await service.initiate({ username: email, redirectUri });
 
       expect(result).toEqual({
         session: 'challenge-session-token',
@@ -89,9 +89,9 @@ describe('MagicLinkService', () => {
         // No Session field
       });
 
-      await expect(service.initiate({ email, redirectUri })).rejects.toThrow(
-        'Failed to send magic link. Please try again.'
-      );
+      await expect(
+        service.initiate({ username: email, redirectUri })
+      ).rejects.toThrow('Failed to send magic link. Please try again.');
     });
 
     it('should throw error if RespondToAuthChallenge fails without session', async () => {
@@ -107,9 +107,9 @@ describe('MagicLinkService', () => {
         // No Session field
       });
 
-      await expect(service.initiate({ email, redirectUri })).rejects.toThrow(
-        'Failed to send magic link. Please try again.'
-      );
+      await expect(
+        service.initiate({ username: email, redirectUri })
+      ).rejects.toThrow('Failed to send magic link. Please try again.');
     });
   });
 
