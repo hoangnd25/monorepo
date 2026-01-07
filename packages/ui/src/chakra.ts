@@ -31,6 +31,7 @@ export {
   Checkbox,
   CloseButton,
   Dialog,
+  Drawer,
   Field,
   Input,
   InputGroup,
@@ -51,6 +52,7 @@ export {
   Timeline,
   Highlight,
   Mark,
+  Collapsible,
 
   // Types
   type SystemContext,
