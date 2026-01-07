@@ -1,456 +1,712 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
+  Accordion,
   Badge,
   Box,
   Button,
   Card,
   Container,
+  Flex,
   HStack,
   Heading,
-  Highlight,
-  Mark,
-  Separator,
+  Icon,
+  Image,
   SimpleGrid,
+  Span,
   Stack,
-  Stat,
-  Tag,
   Text,
-  Timeline,
   VStack,
 } from '@lib/ui';
-import z from 'zod';
+import {
+  LuArrowRight,
+  LuBolt,
+  LuChartColumn,
+  LuCheck,
+  LuMessageSquare,
+  LuPlus,
+  LuPuzzle,
+  LuShield,
+  LuSparkles,
+  LuZap,
+} from 'react-icons/lu';
+import { Footer } from '~/components/Footer';
 import { Header } from '~/components/Header';
 
 export const Route = createFileRoute('/')({
-  validateSearch: z.object({
-    count: z.number().optional(),
-  }),
   component: RouteComponent,
   head: () => ({
     meta: [
       {
-        title: 'Home - TanStack Start + Chakra UI',
+        title: 'Nova AI - AI That Works for Your Business',
       },
       {
         name: 'description',
         content:
-          'A modern React application built with TanStack Start, TanStack Router, and Chakra UI v3. Featuring SSR, type-safe routing, and beautiful components.',
+          'Nova AI helps small and medium businesses automate workflows, get insights from data, and work smarter. No technical team required.',
       },
     ],
   }),
 });
 
+const features = [
+  {
+    icon: LuMessageSquare,
+    title: 'Smart AI Assistant',
+    description:
+      'Chat with your business data. Ask questions, get insights, and make decisions faster with our intelligent assistant.',
+  },
+  {
+    icon: LuBolt,
+    title: 'Workflow Automation',
+    description:
+      'Automate repetitive tasks and processes. Save hours every week and let your team focus on what matters.',
+  },
+  {
+    icon: LuChartColumn,
+    title: 'Business Insights',
+    description:
+      'Turn your data into actionable insights. Understand trends, spot opportunities, and grow your business.',
+  },
+  {
+    icon: LuPuzzle,
+    title: 'Easy Integrations',
+    description:
+      'Connect with the tools you already use. Seamlessly integrate with 50+ popular business applications.',
+  },
+];
+
+const howItWorks = [
+  {
+    step: '01',
+    title: 'Connect your tools',
+    description:
+      'Link your existing business apps in minutes. No coding or technical setup required.',
+  },
+  {
+    step: '02',
+    title: 'Tell Nova what you need',
+    description:
+      'Describe your goals in plain English. Nova learns your business and adapts to your workflow.',
+  },
+  {
+    step: '03',
+    title: 'Watch the magic happen',
+    description:
+      'Nova automates tasks, surfaces insights, and helps your team work smarter every day.',
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      "Nova saved us 15 hours a week on manual data entry. It's like having an extra team member who never sleeps.",
+    name: 'Sarah Mitchell',
+    role: 'Operations Manager',
+    company: 'Bloom Bakery',
+    image: 'https://i.pravatar.cc/150?u=sarah-m',
+  },
+  {
+    quote:
+      "We finally understand our customer data. Nova's insights helped us increase retention by 40%.",
+    name: 'Marcus Chen',
+    role: 'Founder',
+    company: 'Velocity Marketing',
+    image: 'https://i.pravatar.cc/150?u=marcus-c',
+  },
+  {
+    quote:
+      'Setting up automations used to take days with other tools. With Nova, I did it in an afternoon.',
+    name: 'Elena Rodriguez',
+    role: 'Owner',
+    company: 'Casa Verde Shop',
+    image: 'https://i.pravatar.cc/150?u=elena-r',
+  },
+];
+
+const pricingPlans = [
+  {
+    name: 'Starter',
+    price: 'Free',
+    description: 'Perfect for trying out Nova',
+    features: [
+      'Up to 100 AI queries/month',
+      '2 integrations',
+      'Basic analytics',
+      'Email support',
+      'Community access',
+    ],
+    cta: 'Get Started',
+    popular: false,
+  },
+  {
+    name: 'Growth',
+    price: '$29',
+    period: '/month',
+    description: 'For growing businesses',
+    features: [
+      'Unlimited AI queries',
+      '10 integrations',
+      'Advanced analytics',
+      'Workflow automation',
+      'Priority support',
+      'Team collaboration (5 users)',
+    ],
+    cta: 'Start Free Trial',
+    popular: true,
+  },
+  {
+    name: 'Business',
+    price: '$79',
+    period: '/month',
+    description: 'For scaling teams',
+    features: [
+      'Everything in Growth',
+      'Unlimited integrations',
+      'Custom AI training',
+      'API access',
+      'Dedicated support',
+      'Unlimited team members',
+      'SSO & advanced security',
+    ],
+    cta: 'Start Free Trial',
+    popular: false,
+  },
+];
+
+const faqItems = [
+  {
+    value: 'what-is',
+    question: 'What is Nova AI?',
+    answer:
+      'Nova AI is an AI-powered platform designed for small and medium businesses. It helps you automate repetitive tasks, get insights from your business data, and work more efficiently — all without needing technical expertise.',
+  },
+  {
+    value: 'technical',
+    question: 'Do I need technical skills to use Nova?',
+    answer:
+      'Not at all! Nova is designed for business owners and teams, not developers. You can set up integrations, create automations, and chat with your data using plain English. No coding required.',
+  },
+  {
+    value: 'security',
+    question: 'How secure is my data?',
+    answer:
+      'Security is our top priority. All data is encrypted in transit and at rest. We are SOC 2 Type II certified and never use your data to train our AI models. You own your data, always.',
+  },
+  {
+    value: 'integrations',
+    question: 'What tools does Nova integrate with?',
+    answer:
+      'Nova connects with 50+ popular business tools including Google Workspace, Microsoft 365, Slack, QuickBooks, Shopify, HubSpot, Stripe, and many more. We add new integrations every month.',
+  },
+  {
+    value: 'cancel',
+    question: 'Can I cancel anytime?',
+    answer:
+      'Yes, absolutely. There are no long-term contracts. You can upgrade, downgrade, or cancel your subscription at any time. If you cancel, you will have access until the end of your billing period.',
+  },
+];
+
+const trustedByLogos = [
+  'Acme Corp',
+  'Globex',
+  'Initech',
+  'Umbrella',
+  'Stark Inc',
+  'Wayne Co',
+];
+
 function RouteComponent() {
   return (
     <>
       <Header />
-      <Container maxW="container.xl" py={8}>
-        <Box as="main" id="main-content">
-          <Stack gap={8}>
-            {/* Hero Section with Highlight */}
-            <Box as="section" aria-labelledby="hero-heading">
-              <VStack gap={4} textAlign="center" py={12}>
-                <Badge colorPalette="purple" size="lg">
-                  TanStack Start + Chakra UI
-                </Badge>
-                <Heading as="h1" id="hero-heading" size="4xl" lineHeight="tall">
-                  <Highlight
-                    query={['Modern', 'React']}
-                    styles={{
-                      px: '2',
-                      bg: 'purple.subtle',
-                      color: 'purple.fg',
-                    }}
-                  >
-                    Welcome to Modern React Development
-                  </Highlight>
-                </Heading>
-                <Text fontSize="xl" color="gray.700" maxW="2xl">
-                  A modern React application built with{' '}
-                  <Mark bg="blue.subtle" color="blue.fg" px="1">
-                    TanStack Start
-                  </Mark>
-                  ,{' '}
-                  <Mark bg="teal.subtle" color="teal.fg" px="1">
-                    TanStack Router
-                  </Mark>
-                  , and{' '}
-                  <Mark bg="green.subtle" color="green.fg" px="1">
-                    Chakra UI v3
-                  </Mark>
-                  . Featuring SSR, type-safe routing, and beautiful components.
-                </Text>
-                <HStack gap={4} pt={4}>
-                  <Button colorPalette="blue" size="lg" asChild>
-                    <a href="#features">Get Started</a>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    colorPalette="blue"
-                    size="lg"
-                    asChild
-                  >
-                    <a href="/about">Learn More</a>
-                  </Button>
+      <Box as="main" id="main-content">
+        {/* Hero Section */}
+        <Box
+          bg="bg"
+          py={{ base: 16, md: 24 }}
+          position="relative"
+          overflow="hidden"
+        >
+          {/* Subtle gradient background */}
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bgGradient="to-br"
+            gradientFrom="teal.50"
+            gradientTo="transparent"
+            opacity={0.5}
+          />
+          <Container maxW="container.xl" position="relative">
+            <VStack gap={8} textAlign="center" maxW="4xl" mx="auto">
+              <Badge
+                colorPalette="teal"
+                variant="subtle"
+                size="lg"
+                px={4}
+                py={1}
+              >
+                <HStack gap={2}>
+                  <Icon boxSize={3}>
+                    <LuSparkles />
+                  </Icon>
+                  <span>Now with GPT-4 powered insights</span>
                 </HStack>
-              </VStack>
-            </Box>
-
-            <Separator />
-
-            {/* Statistics Section */}
-            <Box as="section" aria-labelledby="stats-heading" py={8}>
+              </Badge>
               <Heading
-                as="h2"
-                id="stats-heading"
-                size="2xl"
-                mb={6}
-                textAlign="center"
+                as="h1"
+                size={{ base: '3xl', md: '5xl', lg: '6xl' }}
+                fontWeight="bold"
+                letterSpacing="tight"
+                lineHeight="1.1"
               >
-                Project Statistics
+                AI that works for
+                <br />
+                <Text as="span" color="teal.500">
+                  your business
+                </Text>
               </Heading>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} gap={6}>
-                <Card.Root>
-                  <Card.Body>
-                    <Stat.Root>
-                      <Stat.Label>Total Downloads</Stat.Label>
-                      <Stat.ValueText fontSize="3xl" fontWeight="bold">
-                        192.1k
-                      </Stat.ValueText>
-                      <Stat.HelpText color="gray.700">
-                        <Stat.UpIndicator />
-                        23.36% from last month
-                      </Stat.HelpText>
-                    </Stat.Root>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <Stat.Root>
-                      <Stat.Label>Active Users</Stat.Label>
-                      <Stat.ValueText fontSize="3xl" fontWeight="bold">
-                        45.2k
-                      </Stat.ValueText>
-                      <Stat.HelpText color="gray.700">
-                        <Stat.UpIndicator />
-                        12.5% from last month
-                      </Stat.HelpText>
-                    </Stat.Root>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <Stat.Root>
-                      <Stat.Label>Response Time</Stat.Label>
-                      <Stat.ValueText fontSize="3xl" fontWeight="bold">
-                        58 <Stat.ValueUnit>ms</Stat.ValueUnit>
-                      </Stat.ValueText>
-                      <Stat.HelpText color="gray.700">
-                        <Stat.DownIndicator />
-                        15% faster
-                      </Stat.HelpText>
-                    </Stat.Root>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <Stat.Root>
-                      <Stat.Label>Build Time</Stat.Label>
-                      <Stat.ValueText fontSize="3xl" fontWeight="bold">
-                        2.3 <Stat.ValueUnit>sec</Stat.ValueUnit>
-                      </Stat.ValueText>
-                      <Stat.HelpText color="gray.700">
-                        <Stat.DownIndicator />
-                        8.2% from last build
-                      </Stat.HelpText>
-                    </Stat.Root>
-                  </Card.Body>
-                </Card.Root>
-              </SimpleGrid>
-            </Box>
-
-            <Separator />
-
-            {/* Features Section with Tags */}
-            <Box as="section" aria-labelledby="features-heading" id="features">
-              <Heading
-                as="h2"
-                id="features-heading"
-                size="2xl"
-                mb={6}
-                textAlign="center"
+              <Text
+                fontSize={{ base: 'lg', md: 'xl' }}
+                color="fg.muted"
+                maxW="2xl"
               >
-                Features
-              </Heading>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="TanStack Start">
-                        🚀 TanStack Start
-                      </Heading>
-                      <Tag.Root colorPalette="purple" size="sm">
-                        <Tag.Label>New</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      Full-stack React framework with server-side rendering,
-                      streaming, and progressive enhancement built-in.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>SSR</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Streaming</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="Chakra UI v3">
-                        🎨 Chakra UI v3
-                      </Heading>
-                      <Tag.Root colorPalette="green" size="sm">
-                        <Tag.Label>Stable</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      Beautiful, accessible component library with dark mode
-                      support and powerful theming capabilities.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Accessible</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Themeable</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="Type-Safe">
-                        🔒 Type-Safe
-                      </Heading>
-                      <Tag.Root colorPalette="blue" size="sm">
-                        <Tag.Label>TypeScript</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      Full TypeScript support with type-safe routing, search
-                      params, and API endpoints.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Type Safety</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>IntelliSense</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="Fast">
-                        ⚡ Fast
-                      </Heading>
-                      <Tag.Root colorPalette="orange" size="sm">
-                        <Tag.Label>Optimized</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      Optimized builds with Vite, automatic code splitting, and
-                      efficient hot module replacement.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Vite</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>HMR</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="Monorepo">
-                        📦 Monorepo
-                      </Heading>
-                      <Tag.Root colorPalette="pink" size="sm">
-                        <Tag.Label>Turborepo</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      Organized with Turborepo for fast builds, shared
-                      configurations, and reusable packages.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Scalable</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Shared</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                <Card.Root>
-                  <Card.Body>
-                    <HStack mb={3}>
-                      <Heading as="h3" size="lg" aria-label="Quality">
-                        ✅ Quality
-                      </Heading>
-                      <Tag.Root colorPalette="teal" size="sm">
-                        <Tag.Label>Best Practices</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                    <Text color="gray.700" mb={3}>
-                      ESLint with TanStack config, TypeScript strict mode, and
-                      modern development practices.
-                    </Text>
-                    <HStack gap={2} flexWrap="wrap">
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>ESLint</Tag.Label>
-                      </Tag.Root>
-                      <Tag.Root size="sm" variant="outline">
-                        <Tag.Label>Strict Mode</Tag.Label>
-                      </Tag.Root>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-              </SimpleGrid>
-            </Box>
-
-            <Separator />
-
-            {/* Project Timeline */}
-            <Box as="section" aria-labelledby="timeline-heading" py={8}>
-              <Heading
-                as="h2"
-                id="timeline-heading"
-                size="2xl"
-                mb={6}
-                textAlign="center"
-              >
-                Project Timeline
-              </Heading>
-              <Box maxW="2xl" mx="auto">
-                <Timeline.Root>
-                  <Timeline.Item>
-                    <Timeline.Connector>
-                      <Timeline.Separator />
-                      <Timeline.Indicator />
-                    </Timeline.Connector>
-                    <Timeline.Content>
-                      <Timeline.Title>Project Initialized</Timeline.Title>
-                      <Timeline.Description>Dec 2024</Timeline.Description>
-                      <Text textStyle="sm" color="gray.700" mt={2}>
-                        Set up the monorepo structure with Turborepo, configured
-                        TanStack Start, and integrated Chakra UI v3.
-                      </Text>
-                    </Timeline.Content>
-                  </Timeline.Item>
-
-                  <Timeline.Item>
-                    <Timeline.Connector>
-                      <Timeline.Separator />
-                      <Timeline.Indicator />
-                    </Timeline.Connector>
-                    <Timeline.Content>
-                      <Timeline.Title>Core Features Added</Timeline.Title>
-                      <Timeline.Description>Dec 2024</Timeline.Description>
-                      <Text textStyle="sm" color="gray.700" mt={2}>
-                        Implemented routing with TanStack Router, added shared
-                        UI package, and configured TypeScript.
-                      </Text>
-                    </Timeline.Content>
-                  </Timeline.Item>
-
-                  <Timeline.Item>
-                    <Timeline.Connector>
-                      <Timeline.Separator />
-                      <Timeline.Indicator />
-                    </Timeline.Connector>
-                    <Timeline.Content>
-                      <Timeline.Title>Enhanced UI Components</Timeline.Title>
-                      <Timeline.Description>Dec 2024</Timeline.Description>
-                      <Text textStyle="sm" color="gray.700" mt={2}>
-                        Added Statistics, Timeline, Tags, Highlights, and other
-                        Chakra UI components to showcase the library&apos;s
-                        capabilities.
-                      </Text>
-                    </Timeline.Content>
-                  </Timeline.Item>
-                </Timeline.Root>
-              </Box>
-            </Box>
-
-            <Separator />
-
-            {/* Tech Stack Section */}
-            <Box
-              as="section"
-              aria-labelledby="tech-stack-heading"
-              bg="gray.50"
-              p={8}
-              borderRadius="lg"
-            >
-              <Heading
-                as="h2"
-                id="tech-stack-heading"
-                size="xl"
-                mb={4}
-                textAlign="center"
-              >
-                Tech Stack
-              </Heading>
-              <HStack justify="center" gap={3} flexWrap="wrap">
-                <Badge colorPalette="blue" size="lg">
-                  React 19
-                </Badge>
-                <Badge colorPalette="purple" size="lg">
-                  TanStack Start
-                </Badge>
-                <Badge colorPalette="teal" size="lg">
-                  TanStack Router
-                </Badge>
-                <Badge colorPalette="green" size="lg">
-                  Chakra UI v3
-                </Badge>
-                <Badge colorPalette="blue" size="lg">
-                  TypeScript
-                </Badge>
-                <Badge colorPalette="orange" size="lg">
-                  Vite
-                </Badge>
-                <Badge colorPalette="pink" size="lg">
-                  pnpm
-                </Badge>
-                <Badge colorPalette="cyan" size="lg">
-                  Turborepo
-                </Badge>
+                Help your team do more with less. Nova brings enterprise AI
+                power to growing businesses — no technical team required.
+              </Text>
+              <HStack gap={4} pt={4} flexWrap="wrap" justify="center">
+                <Button colorPalette="teal" size="lg">
+                  Get Started Free
+                  <Icon>
+                    <LuArrowRight />
+                  </Icon>
+                </Button>
+                <Button variant="outline" size="lg">
+                  Book a Demo
+                </Button>
               </HStack>
-            </Box>
-          </Stack>
+              <Text fontSize="sm" color="fg.muted">
+                Free forever plan available. No credit card required.
+              </Text>
+            </VStack>
+          </Container>
         </Box>
-      </Container>
+
+        {/* Trusted By Section */}
+        <Box bg="bg.muted" py={8}>
+          <Container maxW="container.xl">
+            <VStack gap={6}>
+              <Text
+                fontSize="sm"
+                color="fg.muted"
+                fontWeight="medium"
+                textTransform="uppercase"
+                letterSpacing="wide"
+              >
+                Trusted by 2,000+ growing businesses
+              </Text>
+              <HStack
+                gap={{ base: 6, md: 12 }}
+                flexWrap="wrap"
+                justify="center"
+              >
+                {trustedByLogos.map((logo) => (
+                  <Text
+                    key={logo}
+                    fontSize="lg"
+                    fontWeight="bold"
+                    color="fg.muted"
+                    opacity={0.5}
+                  >
+                    {logo}
+                  </Text>
+                ))}
+              </HStack>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* Features Section */}
+        <Box bg="bg" py={{ base: 16, md: 24 }} id="features">
+          <Container maxW="container.xl">
+            <VStack gap={16}>
+              <VStack gap={4} textAlign="center" maxW="2xl" mx="auto">
+                <Text
+                  color="teal.500"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontSize="sm"
+                >
+                  Features
+                </Text>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Everything you need to work smarter
+                </Heading>
+                <Text color="fg.muted" fontSize="lg">
+                  Powerful AI tools designed for businesses like yours. Simple
+                  to use, impossible to outgrow.
+                </Text>
+              </VStack>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={8} w="full">
+                {features.map((feature) => (
+                  <Card.Root
+                    key={feature.title}
+                    variant="outline"
+                    p={8}
+                    _hover={{ borderColor: 'teal.200', shadow: 'md' }}
+                    transition="all 0.2s"
+                  >
+                    <Card.Body p={0}>
+                      <VStack align="flex-start" gap={4}>
+                        <Box
+                          p={3}
+                          bg="teal.50"
+                          borderRadius="xl"
+                          color="teal.500"
+                        >
+                          <Icon boxSize={6}>
+                            <feature.icon />
+                          </Icon>
+                        </Box>
+                        <Heading as="h3" size="lg">
+                          {feature.title}
+                        </Heading>
+                        <Text color="fg.muted">{feature.description}</Text>
+                      </VStack>
+                    </Card.Body>
+                  </Card.Root>
+                ))}
+              </SimpleGrid>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* How It Works Section */}
+        <Box bg="bg.muted" py={{ base: 16, md: 24 }}>
+          <Container maxW="container.xl">
+            <VStack gap={16}>
+              <VStack gap={4} textAlign="center" maxW="2xl" mx="auto">
+                <Text
+                  color="teal.500"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontSize="sm"
+                >
+                  How It Works
+                </Text>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Up and running in minutes
+                </Heading>
+                <Text color="fg.muted" fontSize="lg">
+                  Getting started with Nova is simple. No lengthy onboarding, no
+                  technical setup.
+                </Text>
+              </VStack>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} gap={8} w="full">
+                {howItWorks.map((step, index) => (
+                  <VStack
+                    key={step.step}
+                    align="flex-start"
+                    gap={4}
+                    position="relative"
+                  >
+                    <Text
+                      fontSize="5xl"
+                      fontWeight="bold"
+                      color="teal.100"
+                      lineHeight={1}
+                    >
+                      {step.step}
+                    </Text>
+                    <Heading as="h3" size="lg">
+                      {step.title}
+                    </Heading>
+                    <Text color="fg.muted">{step.description}</Text>
+                    {index < howItWorks.length - 1 && (
+                      <Icon
+                        boxSize={6}
+                        color="teal.300"
+                        display={{ base: 'none', md: 'block' }}
+                        position="absolute"
+                        right={-4}
+                        top={8}
+                      >
+                        <LuArrowRight />
+                      </Icon>
+                    )}
+                  </VStack>
+                ))}
+              </SimpleGrid>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* Testimonials Section */}
+        <Box bg="bg" py={{ base: 16, md: 24 }}>
+          <Container maxW="container.xl">
+            <VStack gap={16}>
+              <VStack gap={4} textAlign="center" maxW="2xl" mx="auto">
+                <Text
+                  color="teal.500"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontSize="sm"
+                >
+                  Testimonials
+                </Text>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Loved by businesses everywhere
+                </Heading>
+              </VStack>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} gap={8} w="full">
+                {testimonials.map((testimonial) => (
+                  <Card.Root key={testimonial.name} variant="outline" p={6}>
+                    <Card.Body p={0}>
+                      <VStack align="flex-start" gap={6}>
+                        <Text color="fg.muted" fontSize="md" fontStyle="italic">
+                          &ldquo;{testimonial.quote}&rdquo;
+                        </Text>
+                        <HStack gap={3}>
+                          <Image
+                            src={testimonial.image}
+                            alt={testimonial.name}
+                            boxSize={12}
+                            borderRadius="full"
+                            objectFit="cover"
+                          />
+                          <VStack align="flex-start" gap={0}>
+                            <Text fontWeight="semibold">
+                              {testimonial.name}
+                            </Text>
+                            <Text fontSize="sm" color="fg.muted">
+                              {testimonial.role}, {testimonial.company}
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </VStack>
+                    </Card.Body>
+                  </Card.Root>
+                ))}
+              </SimpleGrid>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* Pricing Section */}
+        <Box bg="bg.muted" py={{ base: 16, md: 24 }} id="pricing">
+          <Container maxW="container.xl">
+            <VStack gap={16}>
+              <VStack gap={4} textAlign="center" maxW="2xl" mx="auto">
+                <Text
+                  color="teal.500"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontSize="sm"
+                >
+                  Pricing
+                </Text>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Simple, transparent pricing
+                </Heading>
+                <Text color="fg.muted" fontSize="lg">
+                  Start free and scale as you grow. No hidden fees, no
+                  surprises.
+                </Text>
+              </VStack>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} gap={8} w="full">
+                {pricingPlans.map((plan) => (
+                  <Card.Root
+                    key={plan.name}
+                    variant={plan.popular ? 'elevated' : 'outline'}
+                    p={8}
+                    position="relative"
+                    borderColor={plan.popular ? 'teal.500' : undefined}
+                    borderWidth={plan.popular ? '2px' : '1px'}
+                  >
+                    {plan.popular && (
+                      <Badge
+                        colorPalette="teal"
+                        position="absolute"
+                        top={-3}
+                        left="50%"
+                        transform="translateX(-50%)"
+                        px={3}
+                        py={1}
+                      >
+                        Most Popular
+                      </Badge>
+                    )}
+                    <Card.Body p={0}>
+                      <VStack align="flex-start" gap={6}>
+                        <VStack align="flex-start" gap={2}>
+                          <Text fontWeight="semibold" fontSize="lg">
+                            {plan.name}
+                          </Text>
+                          <HStack align="baseline" gap={1}>
+                            <Text fontSize="4xl" fontWeight="bold">
+                              {plan.price}
+                            </Text>
+                            {plan.period && (
+                              <Text color="fg.muted">{plan.period}</Text>
+                            )}
+                          </HStack>
+                          <Text color="fg.muted" fontSize="sm">
+                            {plan.description}
+                          </Text>
+                        </VStack>
+
+                        <Stack gap={3} w="full">
+                          {plan.features.map((feature) => (
+                            <HStack key={feature} gap={2}>
+                              <Icon boxSize={4} color="teal.500">
+                                <LuCheck />
+                              </Icon>
+                              <Text fontSize="sm">{feature}</Text>
+                            </HStack>
+                          ))}
+                        </Stack>
+
+                        <Button
+                          w="full"
+                          colorPalette={plan.popular ? 'teal' : undefined}
+                          variant={plan.popular ? 'solid' : 'outline'}
+                        >
+                          {plan.cta}
+                        </Button>
+                      </VStack>
+                    </Card.Body>
+                  </Card.Root>
+                ))}
+              </SimpleGrid>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* FAQ Section */}
+        <Box bg="bg" py={{ base: 16, md: 24 }}>
+          <Container maxW="container.lg">
+            <VStack gap={12}>
+              <VStack gap={4} textAlign="center">
+                <Text
+                  color="teal.500"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontSize="sm"
+                >
+                  FAQ
+                </Text>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Questions? We have answers
+                </Heading>
+              </VStack>
+
+              <Accordion.Root
+                collapsible
+                variant="plain"
+                w="full"
+                defaultValue={['what-is']}
+              >
+                {faqItems.map((item) => (
+                  <Accordion.Item
+                    key={item.value}
+                    value={item.value}
+                    borderBottomWidth="1px"
+                    borderColor="border"
+                  >
+                    <Accordion.ItemTrigger py={5}>
+                      <Span flex="1" fontWeight="semibold" fontSize="lg">
+                        {item.question}
+                      </Span>
+                      <Accordion.ItemIndicator>
+                        <Icon>
+                          <LuPlus />
+                        </Icon>
+                      </Accordion.ItemIndicator>
+                    </Accordion.ItemTrigger>
+                    <Accordion.ItemContent>
+                      <Accordion.ItemBody pb={5} color="fg.muted">
+                        {item.answer}
+                      </Accordion.ItemBody>
+                    </Accordion.ItemContent>
+                  </Accordion.Item>
+                ))}
+              </Accordion.Root>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* CTA Section */}
+        <Box bg="teal.600" color="white" py={{ base: 16, md: 24 }}>
+          <Container maxW="container.xl">
+            <VStack gap={8} textAlign="center">
+              <VStack gap={4}>
+                <Heading as="h2" size={{ base: '2xl', md: '4xl' }}>
+                  Ready to work smarter?
+                </Heading>
+                <Text fontSize="xl" opacity={0.9} maxW="2xl">
+                  Join thousands of businesses already using Nova AI to save
+                  time, get insights, and grow faster.
+                </Text>
+              </VStack>
+              <HStack gap={4} flexWrap="wrap" justify="center">
+                <Button
+                  size="lg"
+                  bg="white"
+                  color="teal.600"
+                  _hover={{ bg: 'gray.100' }}
+                >
+                  Get Started Free
+                  <Icon>
+                    <LuArrowRight />
+                  </Icon>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  borderColor="whiteAlpha.500"
+                  color="white"
+                  _hover={{ bg: 'whiteAlpha.200' }}
+                >
+                  Talk to Sales
+                </Button>
+              </HStack>
+              <HStack gap={6} pt={4} opacity={0.8}>
+                <HStack gap={2}>
+                  <Icon boxSize={4}>
+                    <LuCheck />
+                  </Icon>
+                  <Text fontSize="sm">Free forever plan</Text>
+                </HStack>
+                <HStack gap={2}>
+                  <Icon boxSize={4}>
+                    <LuShield />
+                  </Icon>
+                  <Text fontSize="sm">SOC 2 certified</Text>
+                </HStack>
+                <HStack gap={2}>
+                  <Icon boxSize={4}>
+                    <LuZap />
+                  </Icon>
+                  <Text fontSize="sm">Setup in 5 minutes</Text>
+                </HStack>
+              </HStack>
+            </VStack>
+          </Container>
+        </Box>
+
+        <Footer />
+      </Box>
     </>
   );
 }

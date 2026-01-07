@@ -10,9 +10,10 @@ export function CustomLink({ to, children, ...props }: CustomLinkProps) {
   return (
     <ChakraLink
       asChild
-      color="white"
+      color="fg.muted"
       fontWeight="medium"
-      _hover={{ textDecoration: 'underline' }}
+      _hover={{ color: 'fg', textDecoration: 'none' }}
+      transition="color 0.2s"
       {...props}
     >
       <Link to={to} preload="intent">

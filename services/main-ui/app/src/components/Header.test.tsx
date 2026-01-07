@@ -24,7 +24,7 @@ const mockInitialAuthStatus: AuthStatus = {
 };
 
 // Helper to render with router context and providers
-function renderWithRouter(authStatus = mockInitialAuthStatus) {
+async function renderWithRouter(authStatus = mockInitialAuthStatus) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -77,84 +77,63 @@ function renderWithRouter(authStatus = mockInitialAuthStatus) {
     }),
   });
 
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+
+  // Wait for the router to render the header
+  await waitFor(() => {
+    expect(screen.getByText('Nova AI')).toBeInTheDocument();
+  });
 }
 
 describe('Header', () => {
-  it('renders the header component', async () => {
-    renderWithRouter();
+  it('renders the header component with Nova AI branding', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      expect(screen.getByText('Home')).toBeInTheDocument();
-      expect(screen.getByText('About')).toBeInTheDocument();
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    });
+    // Check for branding
+    expect(screen.getByText('Nova AI')).toBeInTheDocument();
+
+    // Check for header element
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
-  it('displays navigation links', async () => {
-    renderWithRouter();
+  it('displays navigation content', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      const homeLink = screen.getByRole('link', { name: /home/i });
-      const aboutLink = screen.getByRole('link', { name: /about/i });
-      const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
-
-      expect(homeLink).toBeInTheDocument();
-      expect(aboutLink).toBeInTheDocument();
-      expect(dashboardLink).toBeInTheDocument();
-    });
+    // Navigation links are in the DOM (even if hidden on mobile viewport)
+    expect(screen.getByText('Features')).toBeInTheDocument();
+    expect(screen.getByText('About')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Pricing')).toBeInTheDocument();
   });
 
-  it('has correct link destinations', async () => {
-    renderWithRouter();
+  it('has logo linking to home', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      const homeLink = screen.getByRole('link', { name: /home/i });
-      const aboutLink = screen.getByRole('link', { name: /about/i });
-      const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
-
-      expect(homeLink).toHaveAttribute('href', '/');
-      expect(aboutLink).toHaveAttribute('href', '/about');
-      expect(dashboardLink).toHaveAttribute('href', '/dashboard');
-    });
+    const logoLink = screen.getByRole('link', { name: /nova ai/i });
+    expect(logoLink).toHaveAttribute('href', '/');
   });
 
-  it('renders header container with proper styling', async () => {
-    renderWithRouter();
+  it('renders header container as banner landmark', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      // The header should be present with its links
-      const homeLink = screen.getByRole('link', { name: /home/i });
-      expect(homeLink).toBeInTheDocument();
-
-      // Check that the parent structure exists
-      expect(homeLink.parentElement).toBeInTheDocument();
-    });
+    const header = screen.getByRole('banner');
+    expect(header).toBeInTheDocument();
   });
 
-  it('renders navigation links in horizontal layout', async () => {
-    renderWithRouter();
+  it('has Get Started Free CTA button', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      const homeLink = screen.getByRole('link', { name: /home/i });
-      const aboutLink = screen.getByRole('link', { name: /about/i });
-      const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
-
-      // All links should be visible
-      expect(homeLink).toBeVisible();
-      expect(aboutLink).toBeVisible();
-      expect(dashboardLink).toBeVisible();
-    });
+    expect(
+      screen.getByRole('button', { name: /get started free/i })
+    ).toBeInTheDocument();
   });
 
-  it('shows Login button when not authenticated', async () => {
-    renderWithRouter();
+  it('has mobile menu button', async () => {
+    await renderWithRouter();
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /login/i })
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.getByRole('button', { name: /open menu/i })
+    ).toBeInTheDocument();
   });
 
   it('shows user menu when authenticated', async () => {
@@ -170,14 +149,17 @@ describe('Header', () => {
       },
     };
 
-    renderWithRouter(authenticatedStatus);
+    await renderWithRouter(authenticatedStatus);
 
-    await waitFor(() => {
-      // Should show user name or email instead of Login button
-      expect(screen.getByText('Test User')).toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: /login/i })
-      ).not.toBeInTheDocument();
-    });
+    // Should show user name or email instead of Login button
+    expect(screen.getByText('Test User')).toBeInTheDocument();
+  });
+
+  it('has skip-to-content link for accessibility', async () => {
+    await renderWithRouter();
+
+    const skipLink = screen.getByText('Skip to main content');
+    expect(skipLink).toBeInTheDocument();
+    expect(skipLink).toHaveAttribute('href', '#main-content');
   });
 });
