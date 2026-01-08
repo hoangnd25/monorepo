@@ -25,7 +25,6 @@ A modern, full-stack monorepo powered by [TanStack Start](https://tanstack.com/s
 .
 ├── services/
 │   ├── main-ui/              # TanStack Start application
-│   ├── main-api/             # Main API service (SST + Lambda)
 │   └── auth/                 # Auth service (Cognito + Internal API)
 ├── packages/
 │   ├── ui/                   # Shared UI components (Chakra UI)

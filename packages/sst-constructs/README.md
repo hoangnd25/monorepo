@@ -176,16 +176,16 @@ new NitroSite(stack, 'web', {
 import { ServiceConfig } from '@lib/sst-constructs';
 
 // In your API stack
-const apiConfig = new ServiceConfig(stack, 'MainApi', {
-  path: '/main-api/url',
+const apiConfig = new ServiceConfig(stack, 'MyApi', {
+  path: '/my-api/url',
 });
 
 // Bind to Lambda functions
 api.bind([apiConfig]);
 
 // In your frontend stack
-const uiConfig = new ServiceConfig(stack, 'MainUi', {
-  path: '/main-ui/url',
+const uiConfig = new ServiceConfig(stack, 'MyUi', {
+  path: '/my-ui/url',
 });
 ```
 
@@ -195,8 +195,8 @@ const uiConfig = new ServiceConfig(stack, 'MainUi', {
 import { ServiceConfig } from '@lib/sst-constructs/node/service-config';
 
 // Fetch configuration (returns Promise<string>)
-const apiUrl = await ServiceConfig.MainApi;
-const uiUrl = await ServiceConfig.MainUi;
+const apiUrl = await ServiceConfig.MyApi;
+const uiUrl = await ServiceConfig.MyUi;
 
 console.log(`API URL: ${apiUrl}`);
 ```
@@ -210,8 +210,8 @@ The `ServiceConfigResources` interface is **automatically generated** by SST dur
 ```typescript
 import { ServiceConfig } from '@lib/sst-constructs/node/service-config';
 
-// TypeScript knows about MainApi and MainUi automatically
-const apiUrl = await ServiceConfig.MainApi; // ✅ Type-safe
+// TypeScript knows about MyApi and MyUi automatically
+const apiUrl = await ServiceConfig.MyApi; // ✅ Type-safe
 const invalid = await ServiceConfig.NonExistent; // ❌ Compile error
 ```
 
@@ -221,8 +221,8 @@ const invalid = await ServiceConfig.NonExistent; // ❌ Compile error
 // In your Lambda function file or a types.d.ts file
 declare module 'sst/node/config' {
   export interface ServiceConfigResources {
-    MainApi: string;
-    MainUi: string;
+    MyApi: string;
+    MyUi: string;
   }
 }
 ```

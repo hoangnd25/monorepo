@@ -31,7 +31,7 @@ Before starting any service:
 
 **Important:** SST dev runs in **interactive mode** and streams Lambda logs to your terminal in real-time. This is the recommended way to run and debug backend services.
 
-Start backend services (auth, main-api, etc.) in local dev mode:
+Start backend services (e.g., auth) in local dev mode:
 
 **With AWS credentials:**
 
