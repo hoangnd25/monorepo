@@ -1,15 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { SsrSite, SsrSiteNormalizedProps, SsrSiteProps } from './SsrSite.ts';
+import {
+  SsrSite,
+  SsrSiteNormalizedProps,
+  SsrSiteExtendedProps,
+} from './SsrSite.ts';
 import { SsrFunctionProps } from 'sst/constructs/SsrFunction.js';
 import { VisibleError } from 'sst/error.js';
 import { Construct } from 'constructs';
 
 const NITRO_OUTPUT_DIR = '.output';
 
-type NitroSSiteProps = SsrSiteProps;
+type NitroSiteProps = SsrSiteExtendedProps;
 
-type NitroSiteNormalizedProps = SsrSiteProps & SsrSiteNormalizedProps;
+type NitroSiteNormalizedProps = SsrSiteExtendedProps & SsrSiteNormalizedProps;
 
 /**
  * The `NitroSite` construct is a higher level CDK construct that makes it easy to create a Nitro app.
@@ -23,11 +27,28 @@ type NitroSiteNormalizedProps = SsrSiteProps & SsrSiteNormalizedProps;
  *   path: "my-nitro-app/",
  * });
  * ```
+ *
+ * @example
+ *
+ * Deploys a Nitro app with a custom gateway domain.
+ *
+ * ```js
+ * new NitroSite(stack, "web", {
+ *   path: "my-nitro-app/",
+ *   gatewayDomain: {
+ *     domainName: "api.example.com",
+ *     hostedZone: "example.com",
+ *     cdk: {
+ *       certificate: myCertificate,
+ *     },
+ *   },
+ * });
+ * ```
  */
 export class NitroSite extends SsrSite {
   declare props: NitroSiteNormalizedProps;
 
-  constructor(scope: Construct, id: string, props?: NitroSSiteProps) {
+  constructor(scope: Construct, id: string, props?: NitroSiteProps) {
     super(scope, id, props);
   }
 

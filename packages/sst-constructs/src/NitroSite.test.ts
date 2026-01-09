@@ -284,4 +284,210 @@ describe('NitroSite', () => {
     expect(resources).toBeDefined();
     expect(Object.keys(resources).length).toBeGreaterThan(0);
   });
+
+  it('should create API Gateway custom domain when gatewayDomain is configured', async () => {
+    const app = new App({ mode: 'deploy' });
+
+    // Import CDK constructs for the test
+    const { HostedZone } = await import('aws-cdk-lib/aws-route53');
+    const { Certificate } = await import('aws-cdk-lib/aws-certificatemanager');
+
+    const Stack = function (ctx: StackContext) {
+      // Create mock hosted zone and certificate for testing
+      const hostedZone = HostedZone.fromHostedZoneAttributes(
+        ctx.stack,
+        'TestHostedZone',
+        {
+          hostedZoneId: 'Z1234567890ABC',
+          zoneName: 'example.com',
+        }
+      );
+
+      const certificate = Certificate.fromCertificateArn(
+        ctx.stack,
+        'TestCertificate',
+        'arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012'
+      );
+
+      new NitroSite(ctx.stack, 'TestNitroSite', {
+        path: testAppPath,
+        gatewayDomain: {
+          domainName: 'api.example.com',
+          hostedZone: hostedZone,
+          cdk: {
+            certificate: certificate,
+          },
+        },
+      });
+    };
+
+    app.stack(Stack);
+    await app.finish();
+
+    const template = Template.fromStack(getStack(Stack));
+
+    // Verify API Gateway custom domain is created
+    template.hasResourceProperties(
+      'AWS::ApiGateway::DomainName',
+      Match.objectLike({
+        DomainName: 'api.example.com',
+        EndpointConfiguration: {
+          Types: ['REGIONAL'],
+        },
+        SecurityPolicy: 'TLS_1_2',
+      })
+    );
+
+    // Verify base path mapping is created
+    template.resourceCountIs('AWS::ApiGateway::BasePathMapping', 1);
+
+    // Verify Route 53 A record is created for the custom domain with latency routing
+    template.hasResourceProperties(
+      'AWS::Route53::RecordSet',
+      Match.objectLike({
+        Name: 'api.example.com.',
+        Type: 'A',
+        Region: Match.anyValue(),
+        SetIdentifier: Match.stringLikeRegexp('api.example.com.*-A'),
+      })
+    );
+
+    // Verify Route 53 AAAA record is created for IPv6 with latency routing
+    template.hasResourceProperties(
+      'AWS::Route53::RecordSet',
+      Match.objectLike({
+        Name: 'api.example.com.',
+        Type: 'AAAA',
+        Region: Match.anyValue(),
+        SetIdentifier: Match.stringLikeRegexp('api.example.com.*-AAAA'),
+      })
+    );
+
+    // Verify CloudFront distribution uses custom domain as origin without originPath
+    template.hasResourceProperties(
+      'AWS::CloudFront::Distribution',
+      Match.objectLike({
+        DistributionConfig: Match.objectLike({
+          Origins: Match.arrayWith([
+            Match.objectLike({
+              DomainName: 'api.example.com',
+              // OriginPath should NOT be set when using custom domain
+              OriginPath: Match.absent(),
+            }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('should skip CloudFront and S3 resources when skipCloudFront is true', async () => {
+    const app = new App({ mode: 'deploy' });
+
+    // Import CDK constructs for the test
+    const { HostedZone } = await import('aws-cdk-lib/aws-route53');
+    const { Certificate } = await import('aws-cdk-lib/aws-certificatemanager');
+
+    let site: NitroSite;
+    const Stack = function (ctx: StackContext) {
+      // Create mock hosted zone and certificate for testing
+      const hostedZone = HostedZone.fromHostedZoneAttributes(
+        ctx.stack,
+        'TestHostedZone',
+        {
+          hostedZoneId: 'Z1234567890ABC',
+          zoneName: 'example.com',
+        }
+      );
+
+      const certificate = Certificate.fromCertificateArn(
+        ctx.stack,
+        'TestCertificate',
+        'arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012'
+      );
+
+      site = new NitroSite(ctx.stack, 'TestNitroSite', {
+        path: testAppPath,
+        skipCloudFront: true,
+        gatewayDomain: {
+          domainName: 'api.example.com',
+          hostedZone: hostedZone,
+          cdk: {
+            certificate: certificate,
+          },
+        },
+      });
+    };
+
+    app.stack(Stack);
+    await app.finish();
+
+    const template = Template.fromStack(getStack(Stack));
+
+    // Group: CloudFront and S3 resources should NOT be created
+    template.resourceCountIs('AWS::CloudFront::Distribution', 0);
+    template.resourceCountIs('AWS::S3::Bucket', 0);
+    template.resourceCountIs('AWS::CloudFront::Function', 0);
+
+    // Group: Lambda and API Gateway should still be created
+    template.hasResourceProperties(
+      'AWS::Lambda::Function',
+      Match.objectLike({
+        Runtime: Match.stringLikeRegexp('nodejs'),
+        Handler: Match.stringLikeRegexp('index.handler'),
+        Description: Match.stringLikeRegexp('Server handler'),
+      })
+    );
+
+    template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
+    template.hasResourceProperties(
+      'AWS::ApiGateway::RestApi',
+      Match.objectLike({
+        EndpointConfiguration: Match.objectLike({
+          Types: ['REGIONAL'],
+        }),
+      })
+    );
+
+    // Group: API Gateway custom domain should still be created
+    template.hasResourceProperties(
+      'AWS::ApiGateway::DomainName',
+      Match.objectLike({
+        DomainName: 'api.example.com',
+        EndpointConfiguration: {
+          Types: ['REGIONAL'],
+        },
+        SecurityPolicy: 'TLS_1_2',
+      })
+    );
+
+    // Verify Route 53 records for latency routing
+    template.hasResourceProperties(
+      'AWS::Route53::RecordSet',
+      Match.objectLike({
+        Name: 'api.example.com.',
+        Type: 'A',
+        Region: Match.anyValue(),
+        SetIdentifier: Match.stringLikeRegexp('api.example.com.*-A'),
+      })
+    );
+
+    // Group: Verify construct properties
+    // url should be undefined when skipCloudFront is true
+    expect(site!.url).toBeUndefined();
+
+    // customDomainUrl should be undefined when skipCloudFront is true
+    expect(site!.customDomainUrl).toBeUndefined();
+
+    // gatewayDomainUrl should return the gateway domain URL
+    expect(site!.gatewayDomainUrl).toBe('https://api.example.com');
+
+    // cdk should have undefined distribution and bucket
+    const cdkResources = site!.cdk;
+    expect(cdkResources).toBeDefined();
+    expect(cdkResources?.distribution).toBeUndefined();
+    expect(cdkResources?.bucket).toBeUndefined();
+    expect(cdkResources?.function).toBeDefined();
+    expect(cdkResources?.gatewayDomainName).toBeDefined();
+    expect(cdkResources?.gatewayHostedZone).toBeDefined();
+  });
 });

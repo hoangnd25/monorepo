@@ -1,6 +1,6 @@
 import { StackContext } from 'sst/constructs';
 import { NitroSite, ServiceConfig } from '@lib/sst-constructs';
-import { dns, envConfig, serviceConfig, ssm } from '@lib/sst-helpers';
+import { dns, envConfig, regions, serviceConfig, ssm } from '@lib/sst-helpers';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
@@ -36,11 +36,18 @@ export function Main(context: StackContext, props?: MainProps) {
     id: 'main',
   });
 
+  const certificateArn = envConfig.getValue(context, {
+    path: 'certificate/arn',
+    id: 'main',
+  });
+
   // Read certificate ARN from us-east-1 region using cross-region SSM helper
-  const certificateArn = ssm.getCrossRegionParameterValue(context, {
+  const certificateArnCloudFront = ssm.getCrossRegionParameterValue(context, {
     parameterName: certificateParameterName,
     region: 'us-east-1',
   });
+
+  const hostedZone = dns.mainHostedZone(context);
 
   const mainSite = new NitroSite(stack, 'MainSite', {
     path: appPath,
@@ -62,15 +69,28 @@ export function Main(context: StackContext, props?: MainProps) {
     ],
     customDomain: {
       domainName: dns.mainDomain(context),
-      hostedZone: dns.mainHostedZone(context),
+      hostedZone: hostedZone,
       cdk: {
         certificate: acm.Certificate.fromCertificateArn(
           stack,
           'SiteCertificate',
+          certificateArnCloudFront
+        ),
+      },
+    },
+    gatewayDomain: {
+      domainName: dns.mainRoutingDomain(context),
+      hostedZone: hostedZone,
+      cdk: {
+        certificate: acm.Certificate.fromCertificateArn(
+          stack,
+          'GatewayCertificate',
           certificateArn
         ),
       },
     },
+    // skip CloudFront in non-home regions as only 1 distribution is needed
+    skipCloudFront: regions.getHomeRegion() !== stack.region,
   });
 
   stack.addOutputs({

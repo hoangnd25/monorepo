@@ -57,7 +57,22 @@ import {
 } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { ResponseTransferMode, EndpointType } from 'aws-cdk-lib/aws-apigateway';
+import {
+  ResponseTransferMode,
+  EndpointType,
+  DomainName,
+  SecurityPolicy,
+  BasePathMapping,
+} from 'aws-cdk-lib/aws-apigateway';
+import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
+import {
+  IHostedZone,
+  HostedZone,
+  ARecord,
+  AaaaRecord,
+  RecordTarget,
+} from 'aws-cdk-lib/aws-route53';
+import { ApiGatewayDomain } from 'aws-cdk-lib/aws-route53-targets';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 import {
@@ -140,6 +155,94 @@ export type OriginGroupConfig = {
 type OriginsMap = Record<string, IOrigin | HttpOrigin | OriginGroup>;
 
 /**
+ * Configuration for custom domain on API Gateway.
+ * Used to set up a custom domain for the API Gateway that serves SSR requests.
+ *
+ * @example
+ * ```js
+ * new NitroSite(stack, "site", {
+ *   path: "web",
+ *   gatewayDomain: {
+ *     domainName: "api.example.com",
+ *     hostedZone: "example.com",
+ *     cdk: {
+ *       certificate: certificateFromArn,
+ *     },
+ *   },
+ * });
+ * ```
+ */
+export interface GatewayDomainProps {
+  /**
+   * The domain name to be assigned to the API Gateway endpoint.
+   */
+  domainName: string;
+  /**
+   * The hosted zone in Route 53 that contains the domain.
+   * Can be the hosted zone name or a reference to an IHostedZone.
+   */
+  hostedZone: string | IHostedZone;
+  /**
+   * CDK resources to override or provide.
+   */
+  cdk: {
+    /**
+     * The ACM certificate to use for the custom domain.
+     */
+    certificate: ICertificate;
+  };
+}
+
+/**
+ * Extended SsrSite props with gatewayDomain configuration.
+ */
+export interface SsrSiteExtendedProps extends SsrSiteProps {
+  /**
+   * Configure a custom domain for the API Gateway that serves SSR requests.
+   * This is useful when you want to access the SSR function directly via
+   * a custom domain without going through CloudFront.
+   *
+   * @example
+   * ```js
+   * gatewayDomain: {
+   *   domainName: "api.example.com",
+   *   hostedZone: "example.com",
+   *   cdk: {
+   *     certificate: myCertificate,
+   *   },
+   * },
+   * ```
+   */
+  gatewayDomain?: GatewayDomainProps;
+
+  /**
+   * Skip deploying CloudFront distribution, S3 bucket, and related resources.
+   * When enabled, only the Lambda function and API Gateway are deployed.
+   *
+   * This is useful for multi-region deployments where CloudFront should only
+   * be deployed in the home/primary region, while secondary regions only need
+   * the API Gateway and Lambda function for latency-based routing.
+   *
+   * @default false
+   *
+   * @example
+   * ```js
+   * // In secondary region, skip CloudFront
+   * new NitroSite(stack, "site", {
+   *   path: "web",
+   *   skipCloudFront: true,
+   *   gatewayDomain: {
+   *     domainName: "api.example.com",
+   *     hostedZone: "example.com",
+   *     cdk: { certificate: myCertificate },
+   *   },
+   * });
+   * ```
+   */
+  skipCloudFront?: boolean;
+}
+
+/**
  * The `SsrSite` construct is a higher level CDK construct that makes it easy to create modern web apps with Server Side Rendering capabilities.
  * @example
  * Deploys an Astro app in the `web` directory.
@@ -153,6 +256,7 @@ type OriginsMap = Record<string, IOrigin | HttpOrigin | OriginGroup>;
 export abstract class SsrSite extends Construct implements SSTConstruct {
   public readonly id: string;
   protected props: SsrSiteNormalizedProps;
+  protected extendedProps: SsrSiteExtendedProps;
   protected doNotDeploy: boolean;
   protected bucket: Bucket;
   protected serverFunction?: SsrFunction;
@@ -161,8 +265,10 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
   private serverFunctionForDev?: SsrFunction;
   private edge?: boolean;
   private distribution: Distribution;
+  private gatewayDomainName?: DomainName;
+  private gatewayHostedZone?: IHostedZone;
 
-  constructor(scope: Construct, id: string, rawProps?: SsrSiteProps) {
+  constructor(scope: Construct, id: string, rawProps?: SsrSiteExtendedProps) {
     super(scope, rawProps?.cdk?.id || id);
 
     const props: SsrSiteNormalizedProps = {
@@ -180,6 +286,7 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
     };
     this.id = id;
     this.props = props;
+    this.extendedProps = rawProps ?? {};
 
     const app = scope.node.root as App;
     const stack = Stack.of(this) as Stack;
@@ -221,35 +328,49 @@ export abstract class SsrSite extends Construct implements SSTConstruct {
       return;
     }
 
+    const skipCloudFront = self.extendedProps.skipCloudFront ?? false;
+
     const s3DeployCRs: CustomResource[] = [];
     const ssrFunctions: SsrFunction[] = [];
     const warmConfig: { concurrency: number; function: SsrFunction }[] = [];
     let singletonCachePolicy: CachePolicy;
     let singletonOriginRequestPolicy: IOriginRequestPolicy;
 
-    // Create Bucket
-    const bucket = createS3Bucket();
+    // Create Bucket (only if not skipping CloudFront)
+    const bucket = skipCloudFront ? null : createS3Bucket();
 
     // Build app
     buildApp();
-    const plan = this.plan(bucket);
+    const plan = this.plan(bucket!);
     transformPlan();
     validateTimeout();
 
-    // Create CloudFront
-    const cfFunctions = createCloudFrontFunctions();
-    const edgeFunctions = createEdgeFunctions();
+    // Create origins (Lambda + API Gateway) - always created
     const origins = createOrigins();
-    const distribution = createCloudFrontDistribution();
-    createDistributionInvalidation();
+
+    // Create CloudFront functions (only if not skipping CloudFront)
+    let cfFunctions: Record<string, CfFunction> = {};
+    let edgeFunctions: Record<string, EdgeFunction> = {};
+
+    // Create CloudFront resources only if not skipping
+    let distribution: Distribution | null = null;
+    if (!skipCloudFront) {
+      cfFunctions = createCloudFrontFunctions();
+      edgeFunctions = createEdgeFunctions();
+      distribution = createCloudFrontDistribution();
+      createDistributionInvalidation();
+
+      this.edgeFunctions = { ...edgeFunctions };
+    }
 
     // Create Warmer
     createWarmer();
 
+    // @ts-expect-error - bucket can be null when skipCloudFront is true
     this.bucket = bucket;
+    // @ts-expect-error - distribution can be null when skipCloudFront is true
     this.distribution = distribution;
     this.serverFunctions = [...ssrFunctions];
-    this.edgeFunctions = { ...edgeFunctions };
     this.serverFunction = ssrFunctions[0];
     this.edge = plan.edge;
 
@@ -614,7 +735,7 @@ function handler(event) {
             ...cdk?.server,
           });
 
-          bucket.grantReadWrite(fn.role!);
+          bucket!.grantReadWrite(fn.role!);
           functions[name] = fn;
         }
       );
@@ -622,7 +743,8 @@ function handler(event) {
     }
 
     function createS3Origin(props: S3OriginConfig) {
-      const s3Origin = S3BucketOrigin.withOriginAccessControl(bucket, {
+      // bucket is guaranteed to exist when createS3Origin is called (only when !skipCloudFront)
+      const s3Origin = S3BucketOrigin.withOriginAccessControl(bucket!, {
         originPath: '/' + (props.originPath ?? ''),
         ...(cdk?.s3Origin ?? {}),
       });
@@ -669,7 +791,7 @@ function handler(event) {
         warmConfig.push({ concurrency: props.warm, function: fn });
       }
 
-      if (fn?.role) {
+      if (fn?.role && bucket) {
         bucket.grantReadWrite(fn.role);
       }
 
@@ -701,6 +823,65 @@ function handler(event) {
         [`ANY /{proxy+}`]: routeProps,
       });
 
+      // Configure custom domain for API Gateway if gatewayDomain is provided
+      const gatewayDomain = self.extendedProps.gatewayDomain;
+      if (gatewayDomain) {
+        // Resolve hosted zone
+        const hostedZone =
+          typeof gatewayDomain.hostedZone === 'string'
+            ? HostedZone.fromLookup(self, 'GatewayHostedZone', {
+                domainName: gatewayDomain.hostedZone,
+              })
+            : gatewayDomain.hostedZone;
+
+        // Create custom domain name for API Gateway
+        const domainName = new DomainName(self, 'GatewayDomainName', {
+          domainName: gatewayDomain.domainName,
+          certificate: gatewayDomain.cdk.certificate,
+          endpointType: EndpointType.REGIONAL,
+          securityPolicy: SecurityPolicy.TLS_1_2,
+        });
+
+        // Create base path mapping
+        new BasePathMapping(self, 'GatewayBasePathMapping', {
+          domainName,
+          restApi: apiGateway.cdk.restApi,
+          stage: apiGateway.cdk.restApi.deploymentStage,
+        });
+
+        // Create A record in Route 53 with latency-based routing
+        // This allows Route 53 to route traffic to the nearest regional endpoint
+        new ARecord(self, 'GatewayARecord', {
+          zone: hostedZone,
+          recordName: gatewayDomain.domainName,
+          target: RecordTarget.fromAlias(new ApiGatewayDomain(domainName)),
+          region: app.region,
+          setIdentifier: `${gatewayDomain.domainName}-${app.region}-A`,
+        });
+
+        // Create AAAA record for IPv6 support with latency-based routing
+        new AaaaRecord(self, 'GatewayAaaaRecord', {
+          zone: hostedZone,
+          recordName: gatewayDomain.domainName,
+          target: RecordTarget.fromAlias(new ApiGatewayDomain(domainName)),
+          region: app.region,
+          setIdentifier: `${gatewayDomain.domainName}-${app.region}-AAAA`,
+        });
+
+        // Store references for later access
+        self.gatewayDomainName = domainName;
+        self.gatewayHostedZone = hostedZone;
+
+        // Use custom domain for CloudFront origin (no stage path needed with custom domain)
+        return new HttpOrigin(gatewayDomain.domainName, {
+          readTimeout:
+            typeof timeout === 'string'
+              ? toCdkDuration(timeout)
+              : CdkDuration.seconds(timeout),
+        });
+      }
+
+      // Use default API Gateway URL when no custom domain is configured
       return new HttpOrigin(Fn.parseDomainName(apiGateway.url), {
         originPath: `${app.stage}`,
         readTimeout:
@@ -721,6 +902,7 @@ function handler(event) {
     function createImageOptimizationFunctionOrigin(
       props: ImageOptimizationFunctionOriginConfig
     ) {
+      // bucket is guaranteed to exist when createImageOptimizationFunctionOrigin is called (only when !skipCloudFront)
       const fn = new CdkFunction(self, `ImageFunction`, {
         currentVersionOptions: {
           removalPolicy: RemovalPolicy.DESTROY,
@@ -730,7 +912,7 @@ function handler(event) {
         initialPolicy: [
           new PolicyStatement({
             actions: ['s3:GetObject'],
-            resources: [bucket.arnForObjects('*')],
+            resources: [bucket!.arnForObjects('*')],
           }),
         ],
         ...props.function,
@@ -752,23 +934,31 @@ function handler(event) {
       Object.entries(plan.origins ?? {}).forEach(([name, props]) => {
         switch (props.type) {
           case 's3':
-            origins[name] = createS3Origin(props);
+            // Skip S3 origin when skipCloudFront is true
+            if (!skipCloudFront) {
+              origins[name] = createS3Origin(props);
+            }
             break;
           case 'function':
             origins[name] = createFunctionOrigin(props);
             break;
           case 'image-optimization-function':
-            origins[name] = createImageOptimizationFunctionOrigin(props);
+            // Skip image optimization when skipCloudFront is true (requires S3)
+            if (!skipCloudFront) {
+              origins[name] = createImageOptimizationFunctionOrigin(props);
+            }
             break;
         }
       });
 
-      // Create group origins
-      Object.entries(plan.origins ?? {}).forEach(([name, props]) => {
-        if (props.type === 'group') {
-          origins[name] = createOriginGroup(props, origins);
-        }
-      });
+      // Create group origins (only when not skipping CloudFront)
+      if (!skipCloudFront) {
+        Object.entries(plan.origins ?? {}).forEach(([name, props]) => {
+          if (props.type === 'group') {
+            origins[name] = createOriginGroup(props, origins);
+          }
+        });
+      }
 
       return origins;
     }
@@ -833,6 +1023,7 @@ function handler(event) {
       copy: S3OriginConfig['copy'],
       s3Assets: Asset[]
     ): CustomResource {
+      // bucket is guaranteed to exist when createS3OriginDeployment is called (only when !skipCloudFront)
       const policy = new Policy(self, 'S3AssetUploaderPolicy', {
         statements: [
           new PolicyStatement({
@@ -843,7 +1034,7 @@ function handler(event) {
           new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['s3:ListBucket', 's3:PutObject', 's3:DeleteObject'],
-            resources: [bucket.bucketArn, `${bucket.bucketArn}/*`],
+            resources: [bucket!.bucketArn, `${bucket!.bucketArn}/*`],
           }),
           new PolicyStatement({
             effect: Effect.ALLOW,
@@ -862,7 +1053,7 @@ function handler(event) {
             bucketName: s3Asset.s3BucketName,
             objectKey: s3Asset.s3ObjectKey,
           })),
-          destinationBucketName: bucket.bucketName,
+          destinationBucketName: bucket!.bucketName,
           concurrency: assets?._uploadConcurrency,
           textEncoding: assets?.textEncoding ?? 'utf-8',
           fileOptions: getS3FileOptions(copy),
@@ -1075,7 +1266,8 @@ function handler(event) {
         invalidationBuildId = hash.digest('hex');
         Logger.debug(`Generated build ID ${invalidationBuildId}`);
       }
-      distribution.createInvalidation({
+      // distribution is guaranteed to exist when createDistributionInvalidation is called (only when !skipCloudFront)
+      distribution!.createInvalidation({
         version: invalidationBuildId,
         paths: invalidationPaths,
         wait: invalidation.wait,
@@ -1086,9 +1278,11 @@ function handler(event) {
 
   /**
    * The CloudFront URL of the website.
+   * Returns undefined when skipCloudFront is true (use gatewayDomainUrl instead).
    */
   public get url() {
     if (this.doNotDeploy) return this.props.dev?.url;
+    if (this.extendedProps.skipCloudFront) return undefined;
 
     return this.distribution.url;
   }
@@ -1096,18 +1290,46 @@ function handler(event) {
   /**
    * If the custom domain is enabled, this is the URL of the website with the
    * custom domain.
+   * Returns undefined when skipCloudFront is true (use gatewayDomainUrl instead).
    */
   public get customDomainUrl() {
     if (this.doNotDeploy) return;
+    if (this.extendedProps.skipCloudFront) return undefined;
 
     return this.distribution.customDomainUrl;
   }
 
   /**
+   * If gatewayDomain is configured, this is the URL of the API Gateway with
+   * the custom domain.
+   */
+  public get gatewayDomainUrl() {
+    if (this.doNotDeploy) return;
+
+    const gatewayDomain = this.extendedProps.gatewayDomain;
+    if (!gatewayDomain) return;
+
+    return `https://${gatewayDomain.domainName}`;
+  }
+
+  /**
    * The internally created CDK resources.
+   * When skipCloudFront is true, distribution, bucket, hostedZone, and certificate are undefined.
    */
   public get cdk() {
     if (this.doNotDeploy) return;
+
+    if (this.extendedProps.skipCloudFront) {
+      return {
+        function: this.serverFunction?.function,
+        bucket: undefined,
+        distribution: undefined,
+        hostedZone: undefined,
+        certificate: undefined,
+        gatewayDomainName: this.gatewayDomainName,
+        gatewayHostedZone: this.gatewayHostedZone,
+      };
+    }
 
     return {
       function: this.serverFunction?.function,
@@ -1115,6 +1337,8 @@ function handler(event) {
       distribution: this.distribution.cdk.distribution,
       hostedZone: this.distribution.cdk.hostedZone,
       certificate: this.distribution.cdk.certificate,
+      gatewayDomainName: this.gatewayDomainName,
+      gatewayHostedZone: this.gatewayHostedZone,
     };
   }
 
@@ -1178,7 +1402,7 @@ function handler(event) {
               // a CloudFormation circular dependency if the Api and the Site belong
               // to different stacks.
               type: 'site_url',
-              value: this.customDomainUrl || this.url!,
+              value: this.customDomainUrl || this.gatewayDomainUrl || this.url!,
             },
       },
       permissions: {

@@ -24,3 +24,13 @@ export const mainDomain = (context: StackContext) => {
 
   return hostedZone;
 };
+
+export const mainRoutingDomain = (context: StackContext) => {
+  const hostedZone = mainHostedZone(context);
+
+  if (isPreviewStage(context)) {
+    return `${context.app.stage}-global.${hostedZone}`;
+  }
+
+  return `global.${hostedZone}`;
+};

@@ -11,4 +11,9 @@ export {
   type GlobalTableAttributes,
   type GlobalTableImportOptions,
 } from './GlobalTable.ts';
-export type { SsrSiteProps, SsrSiteNormalizedProps } from './SsrSite.ts';
+export type {
+  SsrSiteProps,
+  SsrSiteNormalizedProps,
+  SsrSiteExtendedProps,
+  GatewayDomainProps,
+} from './SsrSite.ts';
