@@ -25,13 +25,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Mock account-specific helpers to avoid validation in tests
-vi.mock('@lib/sst-helpers', () => ({
+vi.mock('@lib/sst-helpers', async (importActual) => ({
+  ...(await importActual()),
   dns: {
     mainDomain: vi.fn(() => 'test.example.com'),
+    mainRoutingDomain: vi.fn(() => 'routing.example.com'),
     mainHostedZone: vi.fn(() => 'example.com'),
   },
   envConfig: {
     getParameterName: vi.fn(() => '/test/certificate/arn'),
+    getValue: vi.fn(
+      () => 'arn:aws:acm:us-east-1:123456789012:certificate/test-cert-id'
+    ),
   },
   serviceConfig: {
     getParameterValue: vi.fn(() => 'test-api-id'),
@@ -102,7 +107,7 @@ describe('Main UI Stack', () => {
   });
 
   it('should export MainSiteUrl as stack output', async () => {
-    const app = new App({ mode: 'deploy' });
+    const app = new App({ mode: 'deploy', region: 'us-west-2' });
     const MockStack = (ctx: StackContext) =>
       Main(ctx, { appPath: testAppPath });
     app.stack(MockStack);
