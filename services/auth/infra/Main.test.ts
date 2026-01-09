@@ -37,6 +37,10 @@ vi.mock('@lib/sst-helpers', async (importOriginal) => {
       ...actual.serviceConfig,
       getParameterValue: vi.fn(() => 'test-api-id'),
     },
+    regions: {
+      ...actual.regions,
+      getHomeRegion: vi.fn(() => 'us-east-1'),
+    },
   };
 });
 
@@ -132,5 +136,15 @@ describe('Main stack', () => {
       Type: 'String',
       Name: '/service/auth/test/internal-api-url',
     });
+
+    // GlobalTable with stream enabled
+    template.hasResourceProperties(
+      'AWS::DynamoDB::GlobalTable',
+      Match.objectLike({
+        StreamSpecification: {
+          StreamViewType: 'NEW_AND_OLD_IMAGES',
+        },
+      })
+    );
   });
 });

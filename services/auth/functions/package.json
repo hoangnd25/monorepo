@@ -20,6 +20,7 @@
     "test:unit:run": "vitest run --config vitest.unit.config.ts"
   },
   "dependencies": {
+    "@lib/sst-constructs": "workspace:*",
     "@aws-sdk/client-cognito-identity-provider": "catalog:",
     "@aws-sdk/client-dynamodb": "catalog:",
     "@aws-sdk/client-kms": "catalog:",

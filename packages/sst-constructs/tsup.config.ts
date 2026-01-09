@@ -12,5 +12,6 @@ export default defineConfig([
     treeshake: true,
     shims: true,
     external: ['aws-cdk-lib', 'constructs', 'sst', '@aws-sdk/*'],
+    keepNames: true, // required for SST constructs to generate bindings correctly
   },
 ]);

@@ -2,7 +2,7 @@ import { Api, Config, StackContext, toCdkDuration } from 'sst/constructs';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import { serviceConfig, envConfig, dns, env } from '@lib/sst-helpers';
+import { serviceConfig, envConfig, dns, env, regions } from '@lib/sst-helpers';
 import { GlobalTable } from '@lib/sst-constructs';
 import { UserPool } from './cognito/UserPool.ts';
 import { CognitoTriggers } from './cognito/CognitoTriggers.ts';
@@ -11,6 +11,8 @@ import { SocialLogin } from './cognito/SocialLogin.ts';
 
 export function Main(context: StackContext) {
   const { stack, app } = context;
+
+  const isHomeRegion = app.region === regions.getHomeRegion();
 
   const magicLinkKey = kms.Key.fromKeyArn(
     stack,
@@ -64,22 +66,37 @@ export function Main(context: StackContext) {
     value: userPoolClient.userPoolClientId,
   });
 
-  // Create auth global DynamoDB table
-  const mainTable = new GlobalTable(stack, 'mainTable', {
-    fields: {
-      pk: 'string',
-      sk: 'string',
-      gsi1pk: 'string',
-      gsi1sk: 'string',
-    },
-    primaryIndex: { partitionKey: 'pk', sortKey: 'sk' },
-    globalIndexes: {
-      gsi1: { partitionKey: 'gsi1pk', sortKey: 'gsi1sk' },
-    },
-    // Add replicas for global table functionality
-    // Uncomment and configure regions as needed:
-    // replicas: ['us-east-1', 'eu-west-1'],
-  });
+  // Create or import auth global DynamoDB table based on region
+  // Use consistent table name across regions via logicalPrefixedName
+  const mainTableName = app.logicalPrefixedName('mainTable');
+  let mainTable: GlobalTable;
+
+  if (isHomeRegion) {
+    // Home region: create the table with stream and replicas
+    mainTable = new GlobalTable(stack, 'mainTable', {
+      fields: {
+        pk: 'string',
+        sk: 'string',
+        gsi1pk: 'string',
+        gsi1sk: 'string',
+      },
+      primaryIndex: { partitionKey: 'pk', sortKey: 'sk' },
+      globalIndexes: {
+        gsi1: { partitionKey: 'gsi1pk', sortKey: 'gsi1sk' },
+      },
+      tableName: mainTableName,
+      stream: 'new_and_old_images',
+      // Add replicas for global table functionality
+      replicas: [{ region: 'ap-northeast-1' }],
+    });
+  } else {
+    // Replica region: import the table by name
+    // The GlobalTable construct will automatically look up the stream ARN
+    // via custom resource when addConsumers is called
+    mainTable = GlobalTable.fromTableName(stack, 'mainTable', mainTableName, {
+      autoLookupAttributes: true,
+    });
+  }
 
   // Import the shared internal API from shared-infra service
   const internalApiId = serviceConfig.getParameterValue(context, {

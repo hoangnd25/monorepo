@@ -7,5 +7,8 @@ export {
   type GlobalTableGlobalIndexProps,
   type GlobalTableLocalIndexProps,
   type GlobalTableReplicaProps,
+  type GlobalTableConsumerProps,
+  type GlobalTableAttributes,
+  type GlobalTableImportOptions,
 } from './GlobalTable.ts';
 export type { SsrSiteProps, SsrSiteNormalizedProps } from './SsrSite.ts';

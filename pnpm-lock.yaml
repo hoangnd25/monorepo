@@ -490,6 +490,9 @@ importers:
       '@contract/internal-api':
         specifier: workspace:*
         version: link:../../../packages/contract-internal-api
+      '@lib/sst-constructs':
+        specifier: workspace:*
+        version: link:../../../packages/sst-constructs
       '@orpc/openapi':
         specifier: 'catalog:'
         version: 1.13.2(crossws@0.4.1(srvx@0.10.0))(ws@8.18.3)

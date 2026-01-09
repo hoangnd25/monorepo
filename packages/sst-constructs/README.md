@@ -11,13 +11,19 @@ This package contains custom CDK constructs that simplify deploying server-side 
 This is an internal workspace package. Import it in your SST infrastructure code:
 
 ```typescript
-import { NitroSite, SsrSite, ServiceConfig } from '@lib/sst-constructs';
+import {
+  NitroSite,
+  SsrSite,
+  ServiceConfig,
+  GlobalTable,
+} from '@lib/sst-constructs';
 ```
 
 For Node.js runtime code (Lambda functions), import from the `node` subpath:
 
 ```typescript
 import { ServiceConfig } from '@lib/sst-constructs/node/service-config';
+import { GlobalTable } from '@lib/sst-constructs/node/global-table';
 ```
 
 ## Constructs
@@ -251,6 +257,125 @@ This allows you to:
 
 ---
 
+### GlobalTable
+
+**DynamoDB Global Table construct** built on CDK's `TableV2` with an SST-style API for multi-region replication.
+
+#### Features
+
+- **Global Replication**: Create replica tables in multiple AWS regions
+- **SST-Style API**: Familiar `fields`, `primaryIndex`, `globalIndexes`, `localIndexes` configuration
+- **SST Binding Support**: Bind to Lambda functions with automatic IAM permissions
+- **DynamoDB Streams**: Stream consumers with filtering support
+- **Point-in-Time Recovery**: Enabled by default
+
+#### Basic Usage
+
+```typescript
+import { GlobalTable } from '@lib/sst-constructs';
+
+const table = new GlobalTable(stack, 'users', {
+  fields: {
+    pk: 'string',
+    sk: 'string',
+    gsi1pk: 'string',
+  },
+  primaryIndex: { partitionKey: 'pk', sortKey: 'sk' },
+  globalIndexes: {
+    gsi1: { partitionKey: 'gsi1pk' },
+  },
+  replicas: [{ region: 'eu-west-1' }], // Optional: multi-region
+});
+
+// Bind to Lambda functions
+api.bind([table]);
+```
+
+#### Runtime Usage
+
+```typescript
+import { GlobalTable } from '@lib/sst-constructs/node/global-table';
+
+const tableName = GlobalTable.users.tableName;
+```
+
+#### Stream Consumers
+
+```typescript
+const table = new GlobalTable(stack, 'orders', {
+  fields: { pk: 'string', sk: 'string' },
+  primaryIndex: { partitionKey: 'pk', sortKey: 'sk' },
+  stream: 'new_and_old_images',
+  consumers: {
+    processor: 'src/consumers/processor.handler',
+  },
+});
+```
+
+#### Importing Existing Tables
+
+Import tables in replica regions or for existing infrastructure:
+
+```typescript
+// Simple import
+const table = GlobalTable.fromTableName(stack, 'Users', 'my-table-name');
+
+// With auto-lookup for stream consumers
+const table = GlobalTable.fromTableName(stack, 'Users', 'my-table-name', {
+  autoLookupAttributes: true,
+});
+
+// With explicit stream ARN (recommended for production)
+const table = GlobalTable.fromTableAttributes(stack, 'Users', {
+  tableName: 'my-table-name',
+  tableStreamArn: 'arn:aws:dynamodb:...',
+});
+```
+
+#### Multi-Region Pattern
+
+```typescript
+import { GlobalTable } from '@lib/sst-constructs';
+import { regions } from '@lib/sst-helpers';
+
+const isHomeRegion = app.region === regions.getHomeRegion();
+const tableName = app.logicalPrefixedName('sessions');
+
+const table = isHomeRegion
+  ? new GlobalTable(stack, 'Sessions', {
+      fields: { sessionId: 'string' },
+      primaryIndex: { partitionKey: 'sessionId' },
+      tableName,
+      stream: 'new_and_old_images',
+      replicas: [{ region: 'eu-west-1' }],
+    })
+  : GlobalTable.fromTableName(stack, 'Sessions', tableName, {
+      autoLookupAttributes: true,
+    });
+
+// Works in any region
+table.addConsumers(stack, {
+  processor: 'src/consumers/processor.handler',
+});
+```
+
+#### Configuration Options
+
+| Property              | Type                                                                | Default        | Description         |
+| --------------------- | ------------------------------------------------------------------- | -------------- | ------------------- |
+| `fields`              | `Record<string, 'string' \| 'number' \| 'binary'>`                  | required       | Table attributes    |
+| `primaryIndex`        | `{ partitionKey, sortKey? }`                                        | required       | Primary key         |
+| `globalIndexes`       | `Record<string, GlobalTableGlobalIndexProps>`                       | -              | GSIs                |
+| `localIndexes`        | `Record<string, GlobalTableLocalIndexProps>`                        | -              | LSIs                |
+| `replicas`            | `GlobalTableReplicaProps[]`                                         | -              | Replica regions     |
+| `stream`              | `'keys_only' \| 'new_image' \| 'old_image' \| 'new_and_old_images'` | -              | DynamoDB Streams    |
+| `consumers`           | `Record<string, FunctionDefinition>`                                | -              | Stream consumers    |
+| `timeToLiveAttribute` | `string`                                                            | -              | TTL attribute       |
+| `pointInTimeRecovery` | `boolean`                                                           | `true`         | Enable PITR         |
+| `tableName`           | `string`                                                            | auto-generated | Override table name |
+
+---
+
 ## Common Patterns
 
 ### Binding Resources to SSR Sites
@@ -391,6 +516,30 @@ The abstract `SsrSite` class provides a flexible foundation for different SSR fr
 - **Dynamic Updates**: Can update config without redeploying Lambda functions
 - **Caching**: Built-in caching reduces cold start time
 - **Type Safety**: Module augmentation provides compile-time guarantees
+
+## Development Notes
+
+### Bundler Configuration
+
+This package uses `tsup` for bundling. The `keepNames: true` option is **required** in `tsup.config.ts` to preserve class names at runtime.
+
+**Why this matters**: SST's type generation system uses `constructor.name` to determine the TypeScript interface name (e.g., `GlobalTableResources`). Without `keepNames: true`, bundlers like esbuild may rename classes internally (e.g., `_GlobalTable` instead of `GlobalTable`) when they have static methods that reference the class. This would cause SST to generate incorrect interface names like `_GlobalTableResources`.
+
+```typescript
+// tsup.config.ts
+export default defineConfig([
+  {
+    // ... other options
+    keepNames: true, // Required for SST type generation
+  },
+]);
+```
+
+**Symptoms of missing `keepNames`**:
+
+- Generated types have underscore prefixes (e.g., `_GlobalTableResources`)
+- Runtime `MyConstruct.name` returns `_MyConstruct` instead of `MyConstruct`
+- TypeScript autocomplete shows wrong interface names
 
 ## Related Packages
 
