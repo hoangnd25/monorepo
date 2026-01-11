@@ -1,10 +1,10 @@
-# Beauty AI DM Assistant - Detailed Product Specification
+# Beauty AI DM Assistant - Product Discovery & Specification
 
 ---
 
 ## Document Purpose
 
-This document expands on the PRD to provide detailed product specifications for building the Beauty AI DM Assistant. It breaks down each feature into buildable components, data models, user interfaces, and business logic requirements.
+This document provides a detailed product specification from a discovery perspective, breaking down user needs, journeys, features, and interactions required to build the Beauty AI DM Assistant. It focuses on what the product does and how users interact with it, not how it's technically implemented.
 
 **Status**: Draft v1.0
 **Date**: 2026-01-11
@@ -14,1439 +14,1183 @@ This document expands on the PRD to provide detailed product specifications for 
 
 ## Table of Contents
 
-1. [System Architecture Overview](#system-architecture-overview)
-2. [User Management & Authentication](#user-management--authentication)
-3. [Onboarding Flow](#onboarding-flow)
-4. [Product Management](#product-management)
-5. [Channel Integration](#channel-integration)
-6. [Conversational AI Engine](#conversational-ai-engine)
-7. [Order Capture System](#order-capture-system)
-8. [Human Handoff System](#human-handoff-system)
+1. [Product Vision & Flow](#product-vision--flow)
+2. [User Accounts & Roles](#user-accounts--roles)
+3. [Onboarding Experience](#onboarding-experience)
+4. [Product Catalog Management](#product-catalog-management)
+5. [Channel Connection & Management](#channel-connection--management)
+6. [Conversational AI Behavior](#conversational-ai-behavior)
+7. [Order Capture Journey](#order-capture-journey)
+8. [Human Handoff Experience](#human-handoff-experience)
 9. [Notification System](#notification-system)
 10. [Dashboard & Administration](#dashboard--administration)
-11. [Data Models](#data-models)
-12. [API Specifications](#api-specifications)
-13. [Security & Compliance](#security--compliance)
+11. [Data & Information Architecture](#data--information-architecture)
+12. [Safety, Compliance & Trust](#safety-compliance--trust)
 
 ---
 
-## System Architecture Overview
+## Product Vision & Flow
 
-### High-Level Components
+### End-to-End System Flow
 
 ```
+Customer Journey:
 ┌─────────────────────────────────────────────────────────────┐
-│                    Customer (End User)                       │
-│              Instagram DM / Facebook Messenger               │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
+│ Customer sends DM on Instagram/Facebook                      │
+│   ↓                                                          │
+│ AI responds instantly with product info                      │
+│   ↓                                                          │
+│ Customer shows buying intent                                 │
+│   ↓                                                          │
+│ AI collects order details one-by-one                         │
+│   ↓                                                          │
+│ AI confirms order summary                                    │
+│   ↓                                                          │
+│ AI hands off to shop owner                                   │
+└─────────────────────────────────────────────────────────────┘
+
+Seller Journey:
 ┌─────────────────────────────────────────────────────────────┐
-│                   Meta Platform APIs                         │
-│              (Webhooks + Graph API)                          │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Message Router                             │
-│         (Receives, validates, routes messages)               │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│               Conversation Manager                           │
-│    (State management, context, conversation history)         │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  AI Engine                                   │
-│    (Intent detection, response generation, NLU)              │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Order Capture Engine                            │
-│         (Collect details, validate, confirm)                 │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Handoff & Notification                          │
-│       (Alert seller, format order, enable takeover)          │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Seller Dashboard                            │
-│      (View orders, manage products, take over chats)         │
+│ Receives notification (email/WhatsApp/dashboard)             │
+│   ↓                                                          │
+│ Reviews order details & conversation history                 │
+│   ↓                                                          │
+│ Contacts customer directly on platform                       │
+│   ↓                                                          │
+│ Arranges payment & shipping manually                         │
+│   ↓                                                          │
+│ Marks order as complete                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Technology Stack Recommendations
+### Key Product Principles
 
-**Backend**:
-- Node.js/TypeScript (for real-time webhook processing)
-- Serverless functions (AWS Lambda / Vercel Functions)
-- WebSocket support for real-time dashboard updates
-
-**AI/ML**:
-- OpenAI GPT-4 or Claude API (conversational AI)
-- Custom intent classification (fine-tuned model or prompt engineering)
-- Context management system
-
-**Database**:
-- PostgreSQL (user data, products, orders, conversation history)
-- Redis (session state, rate limiting, caching)
-- S3 or similar (media storage for images)
-
-**Frontend**:
-- React/Next.js (seller dashboard)
-- Tailwind CSS (styling)
-- Real-time updates (WebSocket or Server-Sent Events)
-
-**Integrations**:
-- Meta Graph API v19+ (Facebook/Instagram)
-- Email service (SendGrid/Postmark)
-- SMS service (Twilio for WhatsApp notifications)
+1. **Simplicity First**: 10-minute setup from signup to first order
+2. **One Thing at a Time**: Never overwhelm users with multiple questions
+3. **Always Helpful, Never Harmful**: Beauty-safe responses, no medical claims
+4. **Human-in-the-Loop**: AI captures, human completes
+5. **Seller Control**: Can take over any conversation anytime
 
 ---
 
-## User Management & Authentication
+## User Accounts & Roles
 
-### Requirements
+### Account Types
 
-#### User Accounts
+**Free Trial Account**:
+- 14 days access to all features
+- No credit card required
+- Full functionality (unlimited DMs, channels, products)
+- Converts to paid or gets suspended after trial
 
-**Account Creation**:
-- Email + password registration
-- Social login (Google, Facebook)
-- Email verification required
-- Password reset flow
+**Paid Account** ($29/month):
+- All features unlocked
+- Unlimited DMs (fair use policy)
+- Unlimited products
+- Multiple channel connections
+- Priority support
 
-**Account Types**:
-- **Free Trial**: 14 days, all features
-- **Paid Account**: $29/month subscription
-- **Suspended**: Payment failed, read-only access
-- **Cancelled**: Retain data for 30 days
+**Suspended Account**:
+- Payment failed or trial expired
+- Read-only access to data
+- Can export orders and conversations
+- Can reactivate by updating payment
 
-**User Profile Data**:
-```typescript
-interface UserProfile {
-  id: string;
-  email: string;
-  businessName: string;
-  timezone: string;
-  currency: string; // USD, EUR, VND, etc.
-  brandTone: 'friendly' | 'luxe' | 'influencer';
-  notificationPreferences: NotificationSettings;
-  subscriptionStatus: 'trial' | 'active' | 'suspended' | 'cancelled';
-  subscriptionExpiresAt: Date;
-  createdAt: Date;
-  lastLoginAt: Date;
-}
+**Cancelled Account**:
+- Data retained for 30 days
+- Can reactivate within 30 days
+- After 30 days, all data permanently deleted
 
-interface NotificationSettings {
-  emailNotifications: boolean;
-  emailAddress?: string; // Can be different from login email
-  whatsappNotifications: boolean;
-  whatsappNumber?: string;
-  orderAlerts: boolean;
-  weeklyDigest: boolean;
-}
-```
+### User Profile Information
 
-### User Flows
+Each seller account includes:
 
-#### Sign Up Flow
-```
-1. Landing page → Click "Start Free Trial"
-2. Enter email + password
-3. Email verification (send code)
-4. Enter business name
-5. Set timezone & currency
-6. Choose brand tone (Friendly/Luxe/Influencer)
-7. Set notification preferences
-8. Redirect to channel connection
-```
+**Business Details**:
+- Business name (displayed to customers)
+- Business type (Shop / Influencer / Other)
+- Primary product category (Skincare / Makeup / Both)
 
-#### Login Flow
-```
-1. Enter email + password
-2. Optional: 2FA if enabled
-3. Redirect to dashboard
-```
+**Regional Settings**:
+- Timezone (affects operating hours)
+- Currency (USD, EUR, VND, etc.)
 
-#### Password Reset Flow
-```
+**AI Personality**:
+- Brand tone: Friendly / Luxe / Influencer
+- Response speed: Instant / Delayed (1-3 seconds)
+- Operating hours: Always on / Custom schedule
+
+**Notification Preferences**:
+- Email notifications (on/off, which email)
+- WhatsApp notifications (on/off, phone number)
+- Alert types (orders, new messages, weekly digest)
+- Quiet hours (no notifications during set times)
+
+### User Authentication Flows
+
+**Sign Up Journey**:
+1. Click "Start Free Trial" on landing page
+2. Enter email and create password
+3. Verify email (6-digit code sent)
+4. Enter business information
+5. Choose brand tone and preferences
+6. Redirected to channel connection
+
+**Login Journey**:
+1. Enter email and password
+2. Optional: 2FA code if enabled
+3. Land on dashboard
+
+**Password Reset Journey**:
 1. Click "Forgot Password"
-2. Enter email
-3. Receive reset link via email
-4. Click link → Enter new password
-5. Confirm password changed
-6. Redirect to login
-```
+2. Enter email address
+3. Receive reset link via email (valid 1 hour)
+4. Click link, enter new password
+5. Confirmation and redirect to login
 
 ---
 
-## Onboarding Flow
+## Onboarding Experience
 
 ### Goal
-Get user from signup to first message captured in under 10 minutes.
+Enable shop owners to go from signup to capturing their first order in under 10 minutes, with zero technical knowledge required.
 
-### Step-by-Step Flow
+### Step 1: Business Setup (1 minute)
 
-#### Step 1: Business Setup (1 minute)
-**Screen**: Business Information
+**What the user sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Let's set up your beauty business                       │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Progress: Step 1 of 4                                   │
+│                                                           │
+│  Business name *                                          │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ My Beauty Shop                                      ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                           │
+│  What type of business? *                                │
+│  ( ) Beauty Shop  (•) Influencer  ( ) Other              │
+│                                                           │
+│  What do you sell? *                                     │
+│  [ ] Skincare  [✓] Makeup  [ ] Both                      │
+│                                                           │
+│  Timezone                                                 │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Asia/Ho_Chi_Minh (GMT+7)              ▼            ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                           │
+│  Currency                                                 │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ USD ($)                                  ▼          ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                           │
+│                              [Continue →]                 │
+└──────────────────────────────────────────────────────────┘
+```
 
-**Fields**:
-- Business name (required)
-- Business type: Shop / Influencer / Other
-- Primary products: Skincare / Makeup / Both
-- Timezone (auto-detected, editable)
-- Currency (auto-detected from timezone)
-
-**Validation**:
-- Business name: 3-100 characters
-- All fields required
-
-**UI/UX**:
-- Progress bar: "Step 1 of 4"
-- Auto-save draft every 5 seconds
-- Continue button enabled when valid
+**Business Rules**:
+- Business name: 3-100 characters, required
+- All fields required to continue
+- Auto-save draft every 5 seconds (resume if user leaves)
+- Timezone auto-detected from browser
+- Currency auto-suggested based on timezone
 
 ---
 
-#### Step 2: Connect Social Media (3 minutes)
-**Screen**: Channel Connection
+### Step 2: Connect Social Media (3 minutes)
 
-**Options**:
-- Facebook Page (OAuth flow)
-- Instagram Business Account (OAuth flow)
+**What the user sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Connect your social media channels                      │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Progress: Step 2 of 4                                   │
+│                                                           │
+│  Choose where you want to capture orders:                │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Instagram Business                                │ │
+│  │  Connect your Instagram account to respond to DMs  │ │
+│  │                                                     │ │
+│  │  [Connect Instagram]                               │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Facebook Page                                     │ │
+│  │  Connect your Facebook Page for Messenger         │ │
+│  │                                                     │ │
+│  │  [Connect Facebook]                                │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ℹ️ You need at least one channel to continue            │
+│                                                           │
+│  [← Back]                            [Continue →]        │
+└──────────────────────────────────────────────────────────┘
+```
 
-**Facebook Connection Flow**:
-```
-1. Click "Connect Facebook Page"
-2. Redirect to Facebook OAuth
-3. User grants permissions:
-   - pages_messaging
-   - pages_read_engagement
-   - pages_manage_metadata
-4. User selects which Page to connect
-5. Callback → Store page access token
-6. Show "Connected ✓" status
-```
+**Connection Flow - Facebook**:
+1. User clicks "Connect Facebook"
+2. Opens Facebook OAuth popup
+3. Facebook asks: "Allow access to your Pages?"
+4. User approves
+5. User selects which Page to connect
+6. Returns to our app showing "Connected ✓"
 
-**Instagram Connection Flow**:
-```
-1. Click "Connect Instagram"
-2. Redirect to Facebook OAuth (Instagram requires FB)
-3. User grants permissions:
-   - instagram_basic
-   - instagram_manage_messages
-4. User selects Instagram Business Account
-5. Callback → Store IG account token
-6. Show "Connected ✓" status
-```
+**Connection Flow - Instagram**:
+1. User clicks "Connect Instagram"
+2. Opens Facebook OAuth (Instagram requires Facebook)
+3. Facebook asks: "Allow access to Instagram account?"
+4. User approves
+5. User selects Instagram Business Account
+6. Returns to our app showing "Connected ✓"
 
-**Validation**:
+**Required Permissions**:
+- Send and receive messages
+- Read message engagement
+- Access to page/account information
+
+**Error Scenarios**:
+- OAuth cancelled → "Connection cancelled, please try again"
+- Insufficient permissions → List required permissions, ask to retry
+- Not a Business Account (Instagram) → "Please convert to Business Account first" with instructions
+- Connection timeout → "Connection timed out, please try again"
+
+**Validation Rules**:
 - At least 1 channel must be connected
-- Verify webhook subscription successful
-
-**Error Handling**:
-- OAuth cancelled → Show "Connection cancelled, try again"
-- Insufficient permissions → Show required permissions list
-- Account not eligible (non-business IG) → Show upgrade instructions
+- Webhook verification must succeed
+- Continue button disabled until validated
 
 ---
 
-#### Step 3: Add Products (4 minutes)
-**Screen**: Product Setup
+### Step 3: Add Products (4 minutes)
 
-**Options**:
-1. Manual entry (default)
-2. CSV upload (advanced)
-
-**Manual Product Entry**:
-
-**Form Fields per Product**:
-```typescript
-interface ProductForm {
-  name: string; // Required, 3-100 chars
-  price: number; // Required, > 0
-  currency: string; // Pre-filled from user profile
-  description: string; // Optional, 0-500 chars
-  variants: ProductVariant[]; // Optional
-  imageUrl?: string; // Optional
-  isAvailable: boolean; // Default: true
-}
-
-interface ProductVariant {
-  type: 'size' | 'shade' | 'custom';
-  name: string; // e.g., "30ml", "Light", "Pack of 3"
-  priceModifier?: number; // Optional price difference
-}
+**What the user sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Add your products                                        │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Progress: Step 3 of 4                                   │
+│                                                           │
+│  [Manual Entry] [CSV Upload]                             │
+│                                                           │
+│  Product 1                                                │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Product name *                                      ││
+│  │ Glow Serum                                           ││
+│  │                                                      ││
+│  │ Price *              Currency                        ││
+│  │ 45.00                USD                             ││
+│  │                                                      ││
+│  │ Description (optional)                               ││
+│  │ Brightening vitamin C serum for radiant skin        ││
+│  │                                                      ││
+│  │ Variants (optional)                                  ││
+│  │ Size: 30ml ($45), 50ml ($55)                        ││
+│  │ [+ Add variant]                                     ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                           │
+│  [+ Add another product]                                 │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Products added: 1    Minimum: 1                         │
+│                                                           │
+│  [← Back]                            [Continue →]        │
+└──────────────────────────────────────────────────────────┘
 ```
 
-**UI/UX**:
-- Quick add form: Name + Price (minimum)
-- "Add another product" button
-- Drag to reorder products
-- Preview how AI will describe product
-- Minimum 1 product required to continue
+**Product Entry Options**:
 
-**CSV Upload**:
-- Download template CSV
+**Option 1: Manual Entry** (default, recommended for <10 products):
+- Quick form: Name + Price (minimum to add)
+- Expandable: Description, Image, Variants
+- Can add unlimited products
+- Drag to reorder
+- Preview: "This is how AI will describe it to customers"
+
+**Option 2: CSV Upload** (for 10+ products):
+- Download template CSV file
+- Fill in Excel/Sheets
 - Upload file
-- Validate format
-- Show preview of imported products
-- Allow edit before confirming
+- System validates format
+- Shows preview table
+- Allow inline editing before confirming
 
-**CSV Format**:
-```csv
-name,price,currency,description,variant_type,variant_name,variant_price
-Glow Serum,45,USD,Brightening vitamin C serum,size,30ml,0
-Glow Serum,45,USD,Brightening vitamin C serum,size,50ml,10
-Hydra Cream,55,USD,Deep hydration moisturizer,,,
+**CSV Template Format**:
 ```
+Product Name, Price, Currency, Description, Variant Type, Variant Name, Variant Price Modifier
+Glow Serum, 45, USD, Brightening serum, size, 30ml, 0
+Glow Serum, 45, USD, Brightening serum, size, 50ml, 10
+Hydra Cream, 55, USD, Moisturizer, , ,
+```
+
+**Product Variants**:
+- Type options: Size, Shade, Scent, Custom
+- Price modifier: Can be + or - from base price
+- Example: Base $45, variant "+$10" = $55 total
+- Variant availability can be toggled separately
+
+**Validation Rules**:
+- Product name: 3-100 characters
+- Price: Must be > 0
+- Description: Max 500 characters
+- Minimum 1 product required
+- No duplicate product names
+
+**UI Features**:
+- Auto-save as you type
+- "Preview AI response" button shows how bot will talk about product
+- Error messages inline (red text below field)
+- Success state: Green checkmark when product saved
 
 ---
 
-#### Step 4: Customize AI Behavior (2 minutes)
-**Screen**: AI Assistant Settings
+### Step 4: Customize AI Behavior (2 minutes)
 
-**Settings**:
+**What the user sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Customize your AI assistant                             │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Progress: Step 4 of 4                                   │
+│                                                           │
+│  Choose your brand tone *                                │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ (•) Friendly - Casual, warm, emoji-friendly        │ │
+│  │     Preview: "Hey! 😊 The Glow Serum is $45.       │ │
+│  │              Want to order?"                        │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ ( ) Luxe - Premium, sophisticated, professional    │ │
+│  │     Preview: "Good day. The Glow Serum is priced   │ │
+│  │              at $45. Would you like to order?"      │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ ( ) Influencer - Personal, authentic, relatable    │ │
+│  │     Preview: "Omg the Glow Serum is $45! 💕 It's   │ │
+│  │              sooo good! Want one?"                  │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  Auto-handoff to you when:                               │
+│  [✓] Customer asks medical/health questions              │
+│  [✓] Customer requests custom orders                     │
+│  [✓] Customer seems unhappy                              │
+│  [✓] Order is confirmed (always on)                      │
+│                                                           │
+│  Response speed                                           │
+│  (•) Instant  ( ) Delayed 1-3s (more human-like)         │
+│                                                           │
+│  Operating hours                                          │
+│  (•) Always active (24/7)                                │
+│  ( ) Custom schedule                                      │
+│                                                           │
+│  [← Back]                            [Complete Setup →]  │
+└──────────────────────────────────────────────────────────┘
+```
 
-**Brand Tone** (Choose one):
-- **Friendly**: "Hey! 😊 Looking for something specific?"
-- **Luxe**: "Good day. How may I assist you today?"
-- **Influencer**: "Omg hi! 💕 What can I help you with?"
+**Brand Tone Options**:
 
-**Show preview** of how AI will respond in each tone.
+**Friendly**:
+- Use: Casual beauty shops, approachable brands
+- Characteristics: Emojis, casual language, warm
+- Example greeting: "Hey there! 😊 How can I help you today?"
+- Example price response: "The Glow Serum is $45! Want to order?"
 
-**Auto-Handoff Triggers** (Checkboxes):
-- [ ] Customer asks for custom/special orders
-- [ ] Customer asks medical/health questions
-- [ ] Customer is unhappy/complaining
-- [ ] After order confirmation (always on)
+**Luxe**:
+- Use: Premium brands, high-end beauty
+- Characteristics: Formal, sophisticated, minimal emojis
+- Example greeting: "Good day. How may I assist you with your beauty needs?"
+- Example price response: "The Glow Serum is priced at $45. Would you like to place an order?"
+
+**Influencer**:
+- Use: Personal brands, creator-driven shops
+- Characteristics: Very casual, enthusiastic, lots of emojis
+- Example greeting: "Omg hiiii! 💕 What are you looking for today?"
+- Example price response: "Omg the Glow Serum is $45! It's sooo good! Want one? 💖"
+
+**Auto-Handoff Triggers** (user can customize):
+- Medical questions (safety critical, always recommended)
+- Custom requests (special orders, modifications)
+- Negative sentiment (complaints, dissatisfaction)
+- Order confirmed (always enabled, not optional)
+- Low AI confidence (when AI doesn't understand)
 
 **Response Speed**:
-- Instant (default)
-- Delayed (1-3 seconds, more "human-like")
+- Instant: <1 second (feels like a bot)
+- Delayed: 1-3 seconds (feels more human, shows "typing...")
 
-**Operating Hours** (Optional):
-- Always active (default)
-- Custom hours (set timezone-specific schedule)
-- Outside hours behavior: "I'll connect you with owner tomorrow"
-
----
-
-#### Step 5: Test & Go Live (30 seconds)
-**Screen**: Setup Complete
-
-**What Happens**:
-1. Show success message
-2. Display test instructions:
-   - "Send a test message to your connected page"
-   - "Try asking: 'How much is [product name]?'"
-3. Real-time status indicator
-4. When first message received → Celebrate 🎉
-5. Redirect to dashboard
-
-**Checklist Display**:
-- ✓ Business setup complete
-- ✓ 1 channel connected
-- ✓ 3 products added
-- ✓ AI configured
-- → Ready to capture orders!
+**Operating Hours**:
+- Always active: 24/7 responses
+- Custom schedule: Set hours by day of week
+- Outside hours message: "Thanks for messaging! I'll connect you with the owner when they're available."
 
 ---
 
-## Product Management
+### Step 5: Test & Go Live (30 seconds)
 
-### Requirements
-
-#### Product CRUD Operations
-
-**Create Product**:
-- Via onboarding flow
-- Via dashboard "Add Product" button
-- Via CSV import
-
-**Read/List Products**:
-- Dashboard product list view
-- Search by name
-- Filter by availability
-- Sort by: name, price, created date
-
-**Update Product**:
-- Edit any field inline or via modal
-- Change availability status (toggle)
-- Update variants
-- Changes reflected in AI immediately
-
-**Delete Product**:
-- Soft delete (mark as deleted, keep in DB)
-- Confirmation required
-- Cannot delete if active orders reference it
-
-#### Product Data Model
-
-```typescript
-interface Product {
-  id: string;
-  userId: string; // Owner
-  name: string;
-  description?: string;
-  price: number;
-  currency: string;
-  imageUrl?: string;
-  variants: ProductVariant[];
-  isAvailable: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date;
-}
-
-interface ProductVariant {
-  id: string;
-  productId: string;
-  type: 'size' | 'shade' | 'scent' | 'custom';
-  name: string; // "30ml", "Medium", "Rose"
-  priceModifier: number; // +10, -5, 0
-  isAvailable: boolean;
-}
+**What the user sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  🎉 You're all set!                                      │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Your AI assistant is now active on:                     │
+│  ✓ Instagram @my_beauty_shop                            │
+│  ✓ Facebook Page: My Beauty Shop                        │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Setup Checklist:                                         │
+│  ✓ Business information                                  │
+│  ✓ 1 channel connected                                   │
+│  ✓ 3 products added                                      │
+│  ✓ AI configured (Friendly tone)                         │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Test it now:                                             │
+│  1. Send a DM to your Instagram or Facebook page         │
+│  2. Try: "How much is the Glow Serum?"                   │
+│  3. See your AI respond instantly!                        │
+│                                                           │
+│  [Watch Video Tutorial]                                  │
+│                                                           │
+│  Status: ● Listening for messages...                     │
+│                                                           │
+│  [Go to Dashboard]                                        │
+└──────────────────────────────────────────────────────────┘
 ```
 
-#### Product UI/UX
+**Real-time Status Indicators**:
+- "● Listening for messages..." - Active and waiting
+- "🎉 First message received!" - Celebration animation
+- "✓ AI responded successfully" - Confirmation
 
-**Product List View**:
+**Success Celebration**:
+- When first customer message arrives:
+  - Confetti animation
+  - Sound effect (optional)
+  - "Your AI just had its first conversation! 🎉"
+  - Preview of the conversation
+  - Button: "View full conversation"
+
+**Next Steps Guidance**:
+- "What happens next?"
+- "When a customer wants to order, you'll get notified"
+- "You'll receive an email with order details"
+- "Then you contact them to arrange payment"
+
+---
+
+## Product Catalog Management
+
+### Product List View
+
+**What the seller sees**:
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  Products (12)                      [+ Add Product]      │
 ├──────────────────────────────────────────────────────────┤
-│  🔍 Search products...                                   │
+│  🔍 Search products...                    [Filters ▼]    │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ [📷] Glow Serum                          $45.00   │ │
-│  │      Brightening vitamin C serum                   │ │
-│  │      Variants: 30ml, 50ml (+$10)                   │ │
-│  │      ● Available  [Edit] [Delete]                  │ │
+│  │ [📷]  Glow Serum                        $45.00    │ │
+│  │       Brightening vitamin C serum                  │ │
+│  │       Variants: 30ml ($45), 50ml ($55)             │ │
+│  │       ● Available                                   │ │
+│  │       [Edit] [Mark Out of Stock] [Delete]          │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ [📷] Hydra Cream                         $55.00   │ │
-│  │      Deep hydration moisturizer                    │ │
-│  │      No variants                                    │ │
-│  │      ○ Out of Stock  [Edit] [Delete]               │ │
+│  │ [📷]  Hydra Cream                       $55.00    │ │
+│  │       Deep hydration moisturizer                   │ │
+│  │       No variants                                   │ │
+│  │       ○ Out of Stock                                │ │
+│  │       [Edit] [Mark Available] [Delete]             │ │
 │  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ [📷]  Lip Tint Collection                $22.00   │ │
+│  │       Long-lasting lip color                        │ │
+│  │       Variants: 4 shades                            │ │
+│  │       ● Available                                   │ │
+│  │       [Edit] [Mark Out of Stock] [Delete]          │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Product Edit Modal**:
-- Same fields as creation
-- Show "Last updated: X minutes ago"
-- Save button active only when changes made
-- Cancel button discards changes
+### Product Management Features
 
-#### Bulk Operations
+**Adding a Product**:
+1. Click "+ Add Product"
+2. Fill in quick form (Name, Price minimum)
+3. Optionally add: Description, Image, Variants
+4. Click "Save Product"
+5. Immediately available to AI
 
-**Bulk CSV Import**:
-- Upload CSV
-- Validate format
-- Show errors (row-by-row)
-- Preview changes
-- Confirm import
+**Editing a Product**:
+1. Click "Edit" on product card
+2. Modal opens with all fields editable
+3. Make changes
+4. Click "Save" or "Cancel"
+5. AI immediately uses updated information
 
-**Bulk Availability Toggle**:
-- Select multiple products (checkbox)
-- Mark all as available/unavailable
-- Confirmation dialog
+**Availability Toggle**:
+- One-click: "Mark Out of Stock" / "Mark Available"
+- When out of stock: AI tells customers "Currently unavailable, but I'll let the owner know you're interested"
+- Visual indicator: Green dot (available) vs Gray dot (out of stock)
 
-**Bulk Delete**:
-- Select multiple products
-- Delete button
-- Confirmation: "Delete 5 products?"
+**Deleting a Product**:
+1. Click "Delete"
+2. Confirmation dialog: "Are you sure? This cannot be undone."
+3. If product has active orders: "Cannot delete - 3 active orders reference this product"
+4. If safe to delete: Product removed (soft delete, kept in database)
 
----
+### Bulk Operations
 
-## Channel Integration
-
-### Requirements
-
-#### Supported Channels (MVP)
-
-1. **Facebook Messenger**
-2. **Instagram Direct Messages**
-
-#### Meta Platform Integration
-
-**Required Permissions**:
-- `pages_messaging` - Send and receive messages
-- `pages_read_engagement` - Read page content
-- `pages_manage_metadata` - Subscribe to webhooks
-- `instagram_basic` - Access Instagram account
-- `instagram_manage_messages` - Send/receive Instagram DMs
-
-**Webhook Events to Subscribe**:
-- `messages` - New message received
-- `messaging_postbacks` - Button clicks
-- `message_reads` - Message read receipts
-- `message_deliveries` - Message delivered confirmations
-
-#### Channel Data Model
-
-```typescript
-interface Channel {
-  id: string;
-  userId: string;
-  platform: 'facebook' | 'instagram';
-  platformAccountId: string; // Facebook Page ID or Instagram Account ID
-  platformAccountName: string; // Display name
-  platformAccountUsername?: string; // @handle for Instagram
-  accessToken: string; // Encrypted
-  tokenExpiresAt?: Date;
-  webhookVerified: boolean;
-  isActive: boolean;
-  lastMessageAt?: Date;
-  connectedAt: Date;
-  disconnectedAt?: Date;
-  metadata: {
-    profilePictureUrl?: string;
-    followerCount?: number;
-    verifiedAccount?: boolean;
-  };
-}
+**Bulk Import via CSV**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Import Products from CSV                                │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  1. Download our template CSV file                       │
+│     [Download Template]                                   │
+│                                                           │
+│  2. Fill in your products                                │
+│     - One row per product (or per variant)               │
+│     - Required: name, price, currency                    │
+│     - Optional: description, variants                    │
+│                                                           │
+│  3. Upload your file                                     │
+│     [Choose File] or drag and drop here                  │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Preview (15 products found):                            │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ ✓ Glow Serum - $45 - 2 variants                   │ │
+│  │ ✓ Hydra Cream - $55 - No variants                 │ │
+│  │ ✗ Error: Missing price for "Face Wash"            │ │
+│  │ ✓ Lip Tint - $22 - 4 variants                     │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  Status: 14 valid, 1 error                               │
+│                                                           │
+│  [Fix Errors] [Import Valid Products] [Cancel]           │
+└──────────────────────────────────────────────────────────┘
 ```
 
-#### Connection Flow
+**Bulk Availability Management**:
+1. Select multiple products (checkboxes)
+2. Toolbar appears: "5 products selected"
+3. Options: "Mark Available" / "Mark Out of Stock" / "Delete"
+4. Confirmation for bulk actions
+5. Success message: "5 products updated"
 
-**Facebook Page Connection**:
-```typescript
-// 1. User clicks "Connect Facebook Page"
-// 2. Redirect to OAuth URL
-const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?
-  client_id=${FB_APP_ID}&
-  redirect_uri=${CALLBACK_URL}&
-  scope=pages_messaging,pages_read_engagement,pages_manage_metadata&
-  state=${securityToken}`;
+### Product Variants Management
 
-// 3. User authorizes app
-// 4. Facebook redirects to callback with code
-// 5. Exchange code for access token
-const tokenResponse = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token`, {
-  method: 'POST',
-  body: JSON.stringify({
-    client_id: FB_APP_ID,
-    client_secret: FB_APP_SECRET,
-    redirect_uri: CALLBACK_URL,
-    code: authorizationCode
-  })
-});
+**Variant Types**:
+- **Size**: 30ml, 50ml, 100ml, etc.
+- **Shade**: Light, Medium, Dark, or specific colors
+- **Scent**: Rose, Lavender, Unscented, etc.
+- **Custom**: Any other variant type
 
-// 6. Get user's pages
-const pagesResponse = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`);
+**How Variants Work**:
+- Each variant has a name and price modifier
+- Price modifier is added to base price
+- Example: Base $45 + Variant modifier $10 = Total $55
+- Variants can be individually marked available/unavailable
+- AI asks customers to choose variant during order
 
-// 7. User selects which page to connect
-// 8. Store page access token (long-lived)
-// 9. Subscribe page to webhook
-await fetch(`https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`, {
-  method: 'POST',
-  body: JSON.stringify({
-    subscribed_fields: 'messages,messaging_postbacks',
-    access_token: pageAccessToken
-  })
-});
-
-// 10. Save channel to database
-// 11. Show success message
+**Managing Variants**:
 ```
-
-**Instagram Connection**:
-```typescript
-// Similar flow, but:
-// 1. Must connect Facebook first
-// 2. Get Instagram Business Accounts linked to FB Page
-const igAccounts = await fetch(
-  `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`
-);
-
-// 3. Subscribe IG account to webhooks
-// 4. Store IG account details
-```
-
-#### Webhook Handler
-
-**Webhook Endpoint**: `POST /webhooks/meta`
-
-**Verification (GET request)**:
-```typescript
-app.get('/webhooks/meta', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  if (mode === 'subscribe' && token === WEBHOOK_VERIFY_TOKEN) {
-    res.status(200).send(challenge);
-  } else {
-    res.status(403).send('Forbidden');
-  }
-});
-```
-
-**Message Processing (POST request)**:
-```typescript
-app.post('/webhooks/meta', async (req, res) => {
-  // 1. Immediately respond 200 (Meta requires quick response)
-  res.status(200).send('EVENT_RECEIVED');
-
-  // 2. Process webhook asynchronously
-  const { object, entry } = req.body;
-
-  if (object === 'page') {
-    for (const event of entry) {
-      const webhookEvent = event.messaging?.[0] || event.changes?.[0];
-
-      if (webhookEvent?.message) {
-        await handleIncomingMessage({
-          platform: 'facebook',
-          senderId: webhookEvent.sender.id,
-          recipientId: webhookEvent.recipient.id,
-          messageId: webhookEvent.message.mid,
-          text: webhookEvent.message.text,
-          timestamp: webhookEvent.timestamp,
-          attachments: webhookEvent.message.attachments
-        });
-      }
-    }
-  }
-
-  if (object === 'instagram') {
-    // Handle Instagram DM
-    // Similar structure
-  }
-});
-```
-
-#### Message Sending
-
-**Send Message Function**:
-```typescript
-interface SendMessageParams {
-  channelId: string;
-  recipientId: string;
-  message: {
-    text?: string;
-    quickReplies?: QuickReply[];
-    buttons?: Button[];
-  };
-}
-
-async function sendMessage(params: SendMessageParams) {
-  const channel = await getChannel(params.channelId);
-
-  const payload = {
-    recipient: { id: params.recipientId },
-    message: {
-      text: params.message.text,
-      quick_replies: params.message.quickReplies?.map(qr => ({
-        content_type: 'text',
-        title: qr.title,
-        payload: qr.payload
-      }))
-    }
-  };
-
-  const response = await fetch(
-    `https://graph.facebook.com/v19.0/me/messages?access_token=${channel.accessToken}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }
-  );
-
-  if (!response.ok) {
-    // Handle errors: rate limits, invalid token, etc.
-    throw new Error(`Failed to send message: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-```
-
-#### Rate Limiting
-
-**Meta API Limits**:
-- Facebook: 10,000 messages per day per page
-- Instagram: 1,000 messages per day per account
-- 5 requests per second per app
-
-**Implementation**:
-```typescript
-// Use Redis for distributed rate limiting
-import Redis from 'ioredis';
-const redis = new Redis();
-
-async function checkRateLimit(channelId: string): Promise<boolean> {
-  const key = `ratelimit:${channelId}`;
-  const current = await redis.incr(key);
-
-  if (current === 1) {
-    await redis.expire(key, 86400); // 24 hours
-  }
-
-  const limit = channel.platform === 'facebook' ? 10000 : 1000;
-  return current <= limit;
-}
-```
-
-#### Error Handling
-
-**Common Errors**:
-1. **Token Expired**: Re-authenticate user
-2. **Rate Limited**: Queue message, retry later
-3. **User Blocked Bot**: Mark conversation as ended
-4. **24-hour Window Expired**: Cannot send message (Meta policy)
-
-**Error Recovery**:
-```typescript
-async function sendMessageWithRetry(params: SendMessageParams, retries = 3) {
-  try {
-    return await sendMessage(params);
-  } catch (error) {
-    if (error.code === 'ETIMEDOUT' && retries > 0) {
-      await sleep(1000 * (4 - retries)); // Exponential backoff
-      return sendMessageWithRetry(params, retries - 1);
-    }
-
-    if (error.message.includes('rate limit')) {
-      // Queue for later
-      await queueMessage(params);
-      return { queued: true };
-    }
-
-    throw error; // Unrecoverable
-  }
-}
+┌──────────────────────────────────────────────────────────┐
+│  Edit Product: Glow Serum                                │
+├──────────────────────────────────────────────────────────┤
+│  Base Price: $45                                         │
+│                                                           │
+│  Variants:                                                │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ Size: 30ml                                         │ │
+│  │ Price: $45 (base + $0)                            │ │
+│  │ ● Available  [Edit] [Remove]                       │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ Size: 50ml                                         │ │
+│  │ Price: $55 (base + $10)                           │ │
+│  │ ● Available  [Edit] [Remove]                       │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  [+ Add Variant]                                         │
+│                                                           │
+│  [Save] [Cancel]                                          │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Conversational AI Engine
+## Channel Connection & Management
 
-### Requirements
+### Supported Channels (MVP)
 
-#### Core Capabilities
+1. **Instagram Direct Messages** (Business accounts only)
+2. **Facebook Messenger** (Pages only)
 
-1. **Natural Language Understanding (NLU)**:
-   - Intent classification
-   - Entity extraction
-   - Sentiment analysis
+### Channel Management Dashboard
 
-2. **Response Generation**:
-   - Context-aware replies
-   - Brand tone matching
-   - Natural conversation flow
-
-3. **Safety & Compliance**:
-   - Beauty-specific guardrails
-   - No medical claims
-   - Auto-escalation triggers
-
-#### Intent Classification
-
-**Primary Intents**:
-```typescript
-enum Intent {
-  GREETING = 'greeting',
-  PRODUCT_INQUIRY = 'product_inquiry',
-  PRICE_CHECK = 'price_check',
-  AVAILABILITY_CHECK = 'availability_check',
-  BUYING_INTENT = 'buying_intent',
-  ORDER_MODIFICATION = 'order_modification',
-  COMPLAINT = 'complaint',
-  CUSTOM_REQUEST = 'custom_request',
-  MEDICAL_QUESTION = 'medical_question',
-  CHIT_CHAT = 'chit_chat',
-  UNKNOWN = 'unknown'
-}
+**What the seller sees**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Connected Channels (2)              [+ Connect Channel] │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Instagram                                         │ │
+│  │  @my_beauty_shop                                   │ │
+│  │  ✅ Active • 145 messages today                    │ │
+│  │  Connected 14 days ago                             │ │
+│  │                                                     │ │
+│  │  [View Statistics] [Reconnect] [Disconnect]        │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Facebook Page                                     │ │
+│  │  My Beauty Shop                                    │ │
+│  │  ✅ Active • 89 messages today                     │ │
+│  │  Connected 14 days ago                             │ │
+│  │                                                     │ │
+│  │  [View Statistics] [Reconnect] [Disconnect]        │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+└──────────────────────────────────────────────────────────┘
 ```
 
-**Intent Detection Logic**:
-```typescript
-async function detectIntent(message: string, context: ConversationContext): Promise<Intent> {
-  // Use LLM for intent classification
-  const prompt = `
-You are analyzing a customer message in a beauty product shop conversation.
+### Channel Health Monitoring
 
-Context:
-- Previous messages: ${context.previousMessages.slice(-3).join(', ')}
-- Current conversation state: ${context.state}
-- User has shown buying intent: ${context.hasBuyingIntent}
+**Status Indicators**:
+- ✅ **Active**: Connected, working normally
+- ⚠️ **Warning**: Token expiring soon, needs reconnection
+- ❌ **Disconnected**: Connection lost, immediate action required
+- ⏸️ **Paused**: User manually paused AI
 
-Customer message: "${message}"
+**Health Check Notifications**:
+- Email alert if channel disconnects
+- Dashboard notification if token expiring (7 days before)
+- Weekly health summary report
 
-Classify the intent as one of:
-- greeting: Customer says hi, hello, etc.
-- product_inquiry: Asking about what a product does, ingredients, benefits
-- price_check: Asking how much something costs
-- availability_check: Asking if something is in stock
-- buying_intent: Wants to purchase, order, buy
-- order_modification: Wants to change quantity, variant, address
-- complaint: Unhappy, complaining, problem
-- custom_request: Asking for special/custom order
-- medical_question: Asking about skin conditions, treatments, medical advice
-- chit_chat: Off-topic conversation
-- unknown: Unclear intent
-
-Return only the intent name.
-`;
-
-  const response = await callLLM(prompt);
-  return response.trim() as Intent;
-}
+**Channel Statistics**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Instagram @my_beauty_shop - Statistics                  │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  Last 7 days:                                            │
+│  • Total messages: 342                                   │
+│  • Conversations: 89                                     │
+│  • Orders captured: 23                                   │
+│  • Average response time: <2 seconds                     │
+│  • AI handled: 95% (85 conversations)                    │
+│  • Human takeover: 5% (4 conversations)                  │
+│                                                           │
+│  Top products asked about:                               │
+│  1. Glow Serum (34 inquiries)                           │
+│  2. Hydra Cream (28 inquiries)                          │
+│  3. Lip Tint (19 inquiries)                             │
+│                                                           │
+│  [View Detailed Report] [Export Data]                    │
+└──────────────────────────────────────────────────────────┘
 ```
 
-#### Entity Extraction
+### Disconnecting & Reconnecting
 
-**Entities to Extract**:
-```typescript
-interface ExtractedEntities {
-  products: string[]; // Product names mentioned
-  quantities: number[]; // Numbers mentioned
-  variants: string[]; // Size, shade, etc.
-  location?: string; // Shipping address/city
-  price?: number; // Price mentioned
-  emotion?: 'positive' | 'negative' | 'neutral';
-}
-```
+**Disconnect Flow**:
+1. Click "Disconnect"
+2. Warning: "AI will stop responding on this channel. Continue?"
+3. Confirm
+4. Channel marked inactive
+5. Can reconnect anytime with same button
 
-**Extraction Function**:
-```typescript
-async function extractEntities(message: string, products: Product[]): Promise<ExtractedEntities> {
-  const prompt = `
-Extract entities from this customer message.
+**Reconnect Flow** (when token expired):
+1. Dashboard shows "⚠️ Reconnection needed"
+2. Click "Reconnect"
+3. Re-do OAuth flow
+4. Success: "✅ Channel reconnected"
 
-Available products: ${products.map(p => p.name).join(', ')}
-
-Customer message: "${message}"
-
-Extract:
-1. Product names mentioned (match to available products)
-2. Quantities (numbers indicating how many)
-3. Variants (size, shade, color, scent mentions)
-4. Location (city, country, address)
-5. Emotion (positive/negative/neutral)
-
-Return as JSON.
-`;
-
-  const response = await callLLM(prompt);
-  return JSON.parse(response);
-}
-```
-
-#### Response Generation
-
-**Response Builder**:
-```typescript
-interface ResponseGenerationParams {
-  intent: Intent;
-  entities: ExtractedEntities;
-  context: ConversationContext;
-  userSettings: {
-    brandTone: 'friendly' | 'luxe' | 'influencer';
-    products: Product[];
-  };
-}
-
-async function generateResponse(params: ResponseGenerationParams): Promise<string> {
-  const { intent, entities, context, userSettings } = params;
-
-  // Handle specific intents
-  switch (intent) {
-    case Intent.GREETING:
-      return generateGreeting(userSettings.brandTone);
-
-    case Intent.PRICE_CHECK:
-      return generatePriceResponse(entities.products, userSettings.products, userSettings.brandTone);
-
-    case Intent.BUYING_INTENT:
-      return generateBuyingResponse(entities, context, userSettings.brandTone);
-
-    case Intent.MEDICAL_QUESTION:
-      // Auto-escalate
-      return generateEscalationMessage(userSettings.brandTone);
-
-    default:
-      return generateGenericResponse(params);
-  }
-}
-
-function generateGreeting(tone: string): string {
-  const greetings = {
-    friendly: "Hey there! 😊 How can I help you today?",
-    luxe: "Good day. How may I assist you with your beauty needs?",
-    influencer: "Omg hiiii! 💕 What are you looking for today?"
-  };
-  return greetings[tone];
-}
-
-function generatePriceResponse(productNames: string[], products: Product[], tone: string): string {
-  if (productNames.length === 0) {
-    return "Which product would you like to know the price for?";
-  }
-
-  const product = products.find(p =>
-    p.name.toLowerCase().includes(productNames[0].toLowerCase())
-  );
-
-  if (!product) {
-    return "I don't think we have that product. Would you like to see what we do have?";
-  }
-
-  const toneTemplates = {
-    friendly: `The ${product.name} is $${product.price}! ${product.description || ''} Want to order? 😊`,
-    luxe: `The ${product.name} is priced at $${product.price}. ${product.description || ''} Would you like to place an order?`,
-    influencer: `Omg the ${product.name} is $${product.price}! ${product.description || ''} It's sooo good! Want one? 💖`
-  };
-
-  return toneTemplates[tone];
-}
-```
-
-#### Context Management
-
-**Conversation Context**:
-```typescript
-interface ConversationContext {
-  conversationId: string;
-  userId: string; // Shop owner
-  customerId: string; // End customer (sender ID)
-  channelId: string;
-  state: ConversationState;
-  previousMessages: Message[];
-  extractedData: {
-    productId?: string;
-    variantId?: string;
-    quantity?: number;
-    shippingLocation?: string;
-  };
-  hasBuyingIntent: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  handedOffAt?: Date;
-}
-
-enum ConversationState {
-  BROWSING = 'browsing',
-  COLLECTING_PRODUCT = 'collecting_product',
-  COLLECTING_VARIANT = 'collecting_variant',
-  COLLECTING_QUANTITY = 'collecting_quantity',
-  COLLECTING_LOCATION = 'collecting_location',
-  CONFIRMING_ORDER = 'confirming_order',
-  ORDER_CAPTURED = 'order_captured',
-  HANDED_OFF = 'handed_off'
-}
-```
-
-**Context Storage**:
-- Use Redis for active conversations (TTL: 24 hours)
-- Persist to PostgreSQL for history
-- Load context on each message
-
-#### Safety Guardrails
-
-**Medical Question Detection**:
-```typescript
-const medicalKeywords = [
-  'cure', 'treat', 'diagnosis', 'disease', 'infection',
-  'acne medication', 'prescription', 'doctor', 'dermatologist',
-  'allergic reaction', 'rash', 'burning', 'pain'
-];
-
-function containsMedicalLanguage(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return medicalKeywords.some(keyword => lowerMessage.includes(keyword));
-}
-
-// If detected, escalate immediately
-if (containsMedicalLanguage(message)) {
-  return {
-    response: "That's a great question! Let me connect you with the owner who can help better with that. 💕",
-    shouldHandoff: true,
-    handoffReason: 'medical_question'
-  };
-}
-```
-
-**Unsafe Claims Prevention**:
-```typescript
-// Block AI from making these claims
-const blockedPhrases = [
-  'will cure',
-  'guaranteed to fix',
-  'medically proven',
-  'treats acne',
-  'eliminates wrinkles'
-];
-
-// System prompt instruction
-const systemPrompt = `
-CRITICAL SAFETY RULES:
-- NEVER make medical claims (cure, treat, diagnose)
-- NEVER guarantee results
-- ONLY describe ingredients and general benefits
-- If customer asks medical questions, politely hand off to human
-- Keep responses factual and benefit-focused
-
-ALLOWED: "This serum contains vitamin C, which is known for brightening"
-NOT ALLOWED: "This will cure your acne"
-`;
-```
+**Platform Policy Compliance**:
+- 24-hour messaging window (can't message first after 24h of customer's last message)
+- No spam or bulk messaging
+- Respect user blocking/reporting
+- Clear that it's an automated assistant
 
 ---
 
-## Order Capture System
+## Conversational AI Behavior
 
-### Requirements
+### AI Personality & Capabilities
 
-#### Order Capture Flow
+**What the AI Can Do**:
+1. Answer product questions (price, description, availability)
+2. Understand buying intent and start order collection
+3. Collect order details one field at a time
+4. Remember conversation context
+5. Match brand tone (friendly/luxe/influencer)
+6. Detect when to hand off to human
 
-**State Machine**:
+**What the AI Cannot Do**:
+1. Make medical claims or give health advice
+2. Guarantee results or outcomes
+3. Process payments
+4. Create custom products
+5. Make decisions outside its training
+6. Have opinions or preferences
+
+### Conversation Intent Types
+
+The AI recognizes these customer intents:
+
+**Greeting**:
+- Customer: "Hi", "Hello", "Hey there"
+- AI Response: Greeting based on brand tone
+- Next: Wait for customer to state need
+
+**Product Inquiry**:
+- Customer: "What does the serum do?", "Tell me about the cream"
+- AI Response: Describe product benefits (no medical claims)
+- Next: Ask if they want to know more or order
+
+**Price Check**:
+- Customer: "How much is X?", "Price of Y?"
+- AI Response: State price clearly, mention variants if applicable
+- Next: Ask if they'd like to order
+
+**Availability Check**:
+- Customer: "Is X in stock?", "Do you have Y?"
+- AI Response: "Yes, available!" or "Currently out of stock"
+- Next: If available, ask if they want to order
+
+**Buying Intent**:
+- Customer: "I want to buy", "Can I order", "I'll take one"
+- AI Response: Confirm which product, start order collection
+- Next: Begin order capture flow
+
+**Complaint**:
+- Customer: "This is terrible", "I'm unhappy", angry tone
+- AI Response: Apologize, immediately hand off to owner
+- Next: Human takes over
+
+**Medical Question**:
+- Customer: "Will this cure my acne?", "Is this safe for eczema?"
+- AI Response: "Great question! Let me connect you with the owner"
+- Next: Immediate handoff (safety critical)
+
+**Custom Request**:
+- Customer: "Can you make this in blue?", "Special packaging?"
+- AI Response: "Let me check with the owner about that"
+- Next: Handoff to owner
+
+**Chit Chat**:
+- Customer: "How are you?", "What's your name?"
+- AI Response: Brief, friendly response, redirect to products
+- Next: "How can I help with your beauty needs?"
+
+### Conversation Context & Memory
+
+**What the AI Remembers**:
+- Previous messages in current conversation (last 24 hours)
+- Products mentioned
+- Buying intent signals
+- Current conversation state (browsing, ordering, etc.)
+- Partially collected order information
+
+**What the AI Forgets**:
+- Conversations after 24 hours of inactivity
+- Information from different customers
+- Personal data not needed for order
+
+**Context Examples**:
+
+Example 1 - Following up on interest:
 ```
-BROWSING → (Buying intent detected) → COLLECTING_PRODUCT
-  ↓
-COLLECTING_PRODUCT → (Product identified) → COLLECTING_VARIANT
-  ↓
-COLLECTING_VARIANT → (Variant selected) → COLLECTING_QUANTITY
-  ↓
-COLLECTING_QUANTITY → (Quantity provided) → COLLECTING_LOCATION
-  ↓
-COLLECTING_LOCATION → (Location provided) → CONFIRMING_ORDER
-  ↓
-CONFIRMING_ORDER → (Confirmed) → ORDER_CAPTURED → HANDED_OFF
-```
-
-#### Buying Intent Detection
-
-**Triggers**:
-- Keywords: "buy", "order", "purchase", "want", "get", "I'll take"
-- Phrases: "how do I buy", "can I order", "I need"
-- Context: After price inquiry, follow-up with "yes"
-
-**Intent Confidence**:
-```typescript
-async function detectBuyingIntent(message: string, context: ConversationContext): Promise<number> {
-  // Return confidence score 0-1
-
-  const buyingKeywords = ['buy', 'order', 'purchase', 'want', 'I\'ll take', 'get'];
-  const hasKeyword = buyingKeywords.some(kw => message.toLowerCase().includes(kw));
-
-  // Context-based scoring
-  let confidence = 0;
-
-  if (hasKeyword) confidence += 0.6;
-  if (context.previousMessages.some(m => m.intent === Intent.PRICE_CHECK)) confidence += 0.3;
-  if (message.toLowerCase() === 'yes' && context.lastBotQuestion?.includes('order')) confidence += 0.8;
-
-  return Math.min(confidence, 1.0);
-}
-
-// Trigger order collection if confidence > 0.6
-```
-
-#### One-at-a-Time Collection
-
-**Collection Questions**:
-```typescript
-const collectionQuestions = {
-  product: {
-    friendly: "Which product would you like to order? 😊",
-    luxe: "Which product would you like to purchase?",
-    influencer: "Omg yay! Which one do you want? 💕"
-  },
-  variant: {
-    friendly: "What size/shade would you like?",
-    luxe: "Which variant would you prefer?",
-    influencer: "Which one? We have [list variants]!"
-  },
-  quantity: {
-    friendly: "How many would you like?",
-    luxe: "What quantity would you like to order?",
-    influencer: "How many do you want? 😍"
-  },
-  location: {
-    friendly: "Where should we ship it? (City/Country)",
-    luxe: "What is your shipping location?",
-    influencer: "Where are you located babe?"
-  }
-};
-```
-
-**Collection Logic**:
-```typescript
-async function handleCollectionState(
-  message: string,
-  context: ConversationContext,
-  userSettings: any
-): Promise<{
-  response: string;
-  nextState: ConversationState;
-  updatedData: Partial<OrderData>;
-}> {
-
-  switch (context.state) {
-    case ConversationState.COLLECTING_PRODUCT: {
-      // Extract product from message
-      const entities = await extractEntities(message, userSettings.products);
-      const product = findMatchingProduct(entities.products, userSettings.products);
-
-      if (!product) {
-        return {
-          response: "Hmm, I'm not sure which product you mean. We have: " +
-                   userSettings.products.map(p => p.name).join(', '),
-          nextState: ConversationState.COLLECTING_PRODUCT,
-          updatedData: {}
-        };
-      }
-
-      // Product found
-      if (product.variants.length > 0) {
-        return {
-          response: `Great choice! The ${product.name} comes in: ${product.variants.map(v => v.name).join(', ')}. Which one?`,
-          nextState: ConversationState.COLLECTING_VARIANT,
-          updatedData: { productId: product.id }
-        };
-      } else {
-        return {
-          response: collectionQuestions.quantity[userSettings.brandTone],
-          nextState: ConversationState.COLLECTING_QUANTITY,
-          updatedData: { productId: product.id }
-        };
-      }
-    }
-
-    case ConversationState.COLLECTING_VARIANT: {
-      // Extract variant
-      const product = await getProduct(context.extractedData.productId);
-      const variant = findMatchingVariant(message, product.variants);
-
-      if (!variant) {
-        return {
-          response: "Which variant? " + product.variants.map(v => v.name).join(' or '),
-          nextState: ConversationState.COLLECTING_VARIANT,
-          updatedData: {}
-        };
-      }
-
-      return {
-        response: collectionQuestions.quantity[userSettings.brandTone],
-        nextState: ConversationState.COLLECTING_QUANTITY,
-        updatedData: { variantId: variant.id }
-      };
-    }
-
-    case ConversationState.COLLECTING_QUANTITY: {
-      // Extract number
-      const quantity = extractQuantity(message);
-
-      if (!quantity || quantity < 1 || quantity > 100) {
-        return {
-          response: "How many would you like? (Enter a number)",
-          nextState: ConversationState.COLLECTING_QUANTITY,
-          updatedData: {}
-        };
-      }
-
-      return {
-        response: collectionQuestions.location[userSettings.brandTone],
-        nextState: ConversationState.COLLECTING_LOCATION,
-        updatedData: { quantity }
-      };
-    }
-
-    case ConversationState.COLLECTING_LOCATION: {
-      // Extract location
-      const location = message.trim();
-
-      if (location.length < 2) {
-        return {
-          response: "Could you provide your city or country?",
-          nextState: ConversationState.COLLECTING_LOCATION,
-          updatedData: {}
-        };
-      }
-
-      // Move to confirmation
-      return {
-        response: await generateOrderSummary(context.extractedData, userSettings),
-        nextState: ConversationState.CONFIRMING_ORDER,
-        updatedData: { shippingLocation: location }
-      };
-    }
-
-    case ConversationState.CONFIRMING_ORDER: {
-      // Check confirmation
-      const confirmed = isConfirmation(message);
-
-      if (confirmed) {
-        // Create order and hand off
-        const order = await createOrder(context);
-        await notifySeller(order);
-
-        return {
-          response: "Perfect! The owner will message you soon to arrange payment and delivery. Thank you! 💖",
-          nextState: ConversationState.ORDER_CAPTURED,
-          updatedData: { orderId: order.id }
-        };
-      } else {
-        return {
-          response: "No problem! What would you like to change?",
-          nextState: ConversationState.BROWSING,
-          updatedData: {}
-        };
-      }
-    }
-  }
-}
-
-function extractQuantity(message: string): number | null {
-  const match = message.match(/\d+/);
-  return match ? parseInt(match[0]) : null;
-}
-
-function isConfirmation(message: string): boolean {
-  const confirmWords = ['yes', 'yeah', 'yep', 'correct', 'confirm', 'ok', 'okay', 'sure'];
-  return confirmWords.some(word => message.toLowerCase().includes(word));
-}
+Customer: "How much is the serum?"
+AI: "The Glow Serum is $45! Want to order?"
+Customer: "Maybe later"
+AI: "No problem! Let me know if you have questions."
+[2 hours later]
+Customer: "Actually yes, I want it"
+AI: "Great! Let's get your order for the Glow Serum sorted..."
 ```
 
-#### Order Summary Generation
+Example 2 - Remembering variant preference:
+```
+Customer: "Do you have the 50ml size?"
+AI: "Yes! The Glow Serum in 50ml is $55. Want to order?"
+Customer: "Yes"
+AI: "Perfect! How many 50ml bottles would you like?"
+[AI remembers they want 50ml variant]
+```
 
-```typescript
-async function generateOrderSummary(orderData: OrderData, userSettings: any): Promise<string> {
-  const product = await getProduct(orderData.productId);
-  const variant = orderData.variantId ? await getVariant(orderData.variantId) : null;
+### Response Generation by Brand Tone
 
-  const productName = variant
-    ? `${product.name} (${variant.name})`
-    : product.name;
+**Friendly Tone**:
+- Characteristics: Warm, casual, helpful, emoji-friendly
+- Greeting: "Hey! 😊 How can I help you today?"
+- Price response: "The Glow Serum is $45! It's amazing for brightening. Want one?"
+- Order start: "Awesome! Let's get your order sorted 💕"
+- Handoff: "Thanks so much! The owner will message you soon to arrange payment!"
 
-  const price = variant
-    ? product.price + variant.priceModifier
-    : product.price;
+**Luxe Tone**:
+- Characteristics: Premium, sophisticated, professional
+- Greeting: "Good day. How may I assist you with your beauty needs?"
+- Price response: "The Glow Serum is priced at $45. Would you like to place an order?"
+- Order start: "Excellent choice. Let me collect the details for your order."
+- Handoff: "Thank you for your order. The owner will contact you shortly to finalize the details."
 
-  const total = price * orderData.quantity;
+**Influencer Tone**:
+- Characteristics: Personal, enthusiastic, relatable
+- Greeting: "Omg hiiii! 💕 What are you looking for today?"
+- Price response: "The Glow Serum is $45! It's literally my fave 😍 Want one??"
+- Order start: "Yayyy! Let me get your deets!"
+- Handoff: "Omg yay! 🎉 The owner will DM you soon about payment and shipping!"
 
-  const tone = userSettings.brandTone;
+### Safety Guardrails
 
-  const summaries = {
-    friendly: `
+**Medical Claims Prevention**:
+- Blocked words: "cure", "treat", "heal", "fix", "eliminate"
+- AI never says: "This will fix your acne"
+- AI can say: "This serum contains vitamin C, known for brightening"
+
+**Example Safe vs Unsafe Responses**:
+```
+Customer: "Will this cure my acne?"
+
+❌ Unsafe: "Yes, it will cure your acne in 2 weeks!"
+✅ Safe: "Great question! Let me connect you with the owner who can help with that."
+
+Customer: "What's in this serum?"
+
+❌ Unsafe: "It has retinol which treats wrinkles"
+✅ Safe: "It contains vitamin C, hyaluronic acid, and niacinamide for brightening and hydration."
+```
+
+**Escalation Triggers**:
+- Medical/health questions → Immediate handoff
+- Negative sentiment → Handoff
+- Custom requests → Handoff
+- Low confidence (<50%) → Handoff
+- Explicit request for human → Handoff
+
+---
+
+## Order Capture Journey
+
+### Order Capture Flow Overview
+
+```
+State Machine:
+
+BROWSING
+  ↓ (Buying intent detected)
+COLLECTING_PRODUCT
+  ↓ (Product identified)
+COLLECTING_VARIANT (if product has variants)
+  ↓ (Variant selected)
+COLLECTING_QUANTITY
+  ↓ (Quantity provided)
+COLLECTING_LOCATION
+  ↓ (Location provided)
+CONFIRMING_ORDER
+  ↓ (Confirmed)
+ORDER_CAPTURED
+  ↓
+HANDED_OFF
+```
+
+### Detailed Conversation Examples
+
+**Example 1: Simple Order (No Variants)**
+
+```
+Customer: "I want the Hydra Cream"
+AI: "Great choice! The Hydra Cream is $55. How many would you like?"
+
+Customer: "2"
+AI: "Perfect! 2 bottles. Where should we ship them? (City/Country)"
+
+Customer: "Sydney"
+AI: "Let me confirm your order:
+     • Hydra Cream × 2
+     • Total: $110
+     • Shipping to: Sydney
+
+     Is this correct?"
+
+Customer: "Yes"
+AI: "Perfect! The owner will message you soon to arrange payment and delivery. Thank you! 💖"
+
+[Order captured, seller notified]
+```
+
+**Example 2: Order with Variants**
+
+```
+Customer: "Can I get the Glow Serum?"
+AI: "Absolutely! The Glow Serum comes in:
+     • 30ml ($45)
+     • 50ml ($55)
+
+     Which size would you like?"
+
+Customer: "50ml"
+AI: "Great! How many 50ml bottles?"
+
+Customer: "1"
+AI: "Perfect! Where should we ship it?"
+
+Customer: "Melbourne, Australia"
+AI: "Let me confirm:
+     • Glow Serum (50ml) × 1
+     • Total: $55
+     • Shipping to: Melbourne, Australia
+
+     Is this correct?"
+
+Customer: "Yes"
+AI: "Awesome! The owner will message you shortly about payment. Thanks! 🎉"
+```
+
+**Example 3: Order Correction**
+
+```
+[... order collection happens ...]
+
+AI: "Let me confirm:
+     • Glow Serum (30ml) × 2
+     • Total: $90
+     • Shipping to: Sydney
+
+     Is this correct?"
+
+Customer: "No, I want 50ml not 30ml"
+AI: "No problem! Let me update that:
+     • Glow Serum (50ml) × 2
+     • Total: $110
+     • Shipping to: Sydney
+
+     Is this better?"
+
+Customer: "Yes perfect"
+AI: "Great! The owner will contact you soon!"
+```
+
+### Order Collection Rules
+
+**One Question at a Time**:
+- Never ask multiple questions in one message
+- Wait for customer response before next question
+- Keep questions simple and clear
+
+**Question Sequence**:
+1. Which product? (if not already mentioned)
+2. Which variant? (if product has variants)
+3. How many?
+4. Where to ship?
+5. Confirm all details
+
+**Validation & Error Handling**:
+
+**Product Selection**:
+- If unclear: "Which product did you mean? We have: [list 3-5 products]"
+- If not found: "I don't think we have that. Want to see our products?"
+- If out of stock: "That's currently unavailable. Can I suggest something similar?"
+
+**Variant Selection**:
+- If unclear: "Which [variant type]? We have: [list options]"
+- If invalid: "We have [list valid variants]. Which would you prefer?"
+
+**Quantity**:
+- If not a number: "How many would you like? (Please enter a number)"
+- If too high (>100): "That's a lot! Let me connect you with the owner for bulk orders."
+- If zero/negative: "Please enter a number greater than 0"
+
+**Location**:
+- If too short (<2 chars): "Could you provide your city or country?"
+- If empty: "Where should we ship it?"
+- Accept any text (city, country, full address)
+
+**Confirmation**:
+- If "yes/yeah/yep/correct/ok": Proceed to capture
+- If "no/nope/wrong": "What would you like to change?"
+- If unclear: "Is this order correct? (Yes/No)"
+
+### Order Summary Format
+
+The AI generates a clear summary before final confirmation:
+
+**Format** (adapted to brand tone):
+```
 Let me confirm your order:
-• ${productName} × ${orderData.quantity}
-• Total: $${total}
-• Shipping to: ${orderData.shippingLocation}
+• [Product Name] ([Variant]) × [Quantity]
+• Total: $[Amount]
+• Shipping to: [Location]
+
+Is this correct?
+```
+
+**Friendly Tone Example**:
+```
+Let me confirm your order:
+• Glow Serum (50ml) × 2
+• Total: $110
+• Shipping to: Sydney
 
 Is this correct? 😊
-    `.trim(),
+```
 
-    luxe: `
+**Luxe Tone Example**:
+```
 Order Summary:
-${productName} × ${orderData.quantity}
-Subtotal: $${total}
-Destination: ${orderData.shippingLocation}
+Glow Serum (50ml) × 2
+Subtotal: $110
+Destination: Sydney
 
 Please confirm if the details are correct.
-    `.trim(),
+```
 
-    influencer: `
+**Influencer Tone Example**:
+```
 Okay so you want:
-${productName} × ${orderData.quantity} = $${total} 💕
-Shipping to ${orderData.shippingLocation}
+Glow Serum (50ml) × 2 = $110 💕
+Shipping to Sydney
 
 Right?? 😍
-    `.trim()
-  };
-
-  return summaries[tone];
-}
 ```
 
-#### Order Data Model
+### What Happens After Order Captured
 
-```typescript
-interface Order {
-  id: string;
-  userId: string; // Shop owner
-  customerId: string; // End customer
-  conversationId: string;
-  channelId: string;
+**Immediate Actions**:
+1. AI sends confirmation to customer
+2. AI disables itself for this conversation
+3. System creates order record
+4. Seller receives notifications (email, WhatsApp, dashboard)
+5. Conversation marked as "handed off"
 
-  // Order details
-  productId: string;
-  productName: string; // Snapshot at order time
-  variantId?: string;
-  variantName?: string;
-  quantity: number;
-  pricePerUnit: number;
-  totalPrice: number;
-  currency: string;
+**Customer Experience**:
+- Clear expectation: "Owner will contact you soon"
+- No more AI responses in this conversation
+- Next message from seller is human
 
-  // Shipping
-  shippingLocation: string;
-
-  // Status
-  status: OrderStatus;
-  capturedAt: Date;
-  handedOffAt?: Date;
-  completedAt?: Date;
-  cancelledAt?: Date;
-
-  // Communication
-  conversationHistory: Message[];
-  sellerNotes?: string;
-}
-
-enum OrderStatus {
-  CAPTURED = 'captured', // AI captured, awaiting seller
-  IN_PROGRESS = 'in_progress', // Seller contacted customer
-  COMPLETED = 'completed', // Order fulfilled
-  CANCELLED = 'cancelled' // Order cancelled
-}
-```
+**Seller Experience**:
+- Instant notification with order summary
+- Full conversation history
+- Customer contact information
+- Action buttons: Contact, Mark Complete, Cancel
 
 ---
 
-## Human Handoff System
+## Human Handoff Experience
 
-### Requirements
-
-#### When to Hand Off
+### When Handoff Happens
 
 **Automatic Handoff Triggers**:
-1. Order confirmed (always)
-2. Medical/health questions detected
-3. Custom/special requests
-4. Complaint/negative sentiment
-5. AI confidence too low (< 0.5)
-6. Customer explicitly asks for human
+
+1. **Order Confirmed** (always):
+   - AI collected all details
+   - Customer confirmed order
+   - Seller needs to handle payment
+
+2. **Medical/Health Question**:
+   - Customer asks about skin conditions
+   - Questions about allergies, reactions
+   - Any medical terminology detected
+
+3. **Custom/Special Request**:
+   - Custom product modifications
+   - Special packaging requests
+   - Bulk or wholesale inquiries
+
+4. **Negative Sentiment/Complaint**:
+   - Customer expresses dissatisfaction
+   - Complaint about product or service
+   - Angry or frustrated tone
+
+5. **Low AI Confidence**:
+   - AI doesn't understand question
+   - Ambiguous request
+   - Outside AI's knowledge
+
+6. **Explicit Request**:
+   - Customer asks to speak to human/owner
+   - "Let me talk to a real person"
 
 **Manual Handoff**:
-- Seller can take over any conversation from dashboard
+- Seller can take over any conversation anytime from dashboard
+- Click "Take Over" button
+- AI immediately stops responding
 
-#### Handoff Flow
+### Customer Experience During Handoff
 
-```typescript
-async function initiateHandoff(
-  conversationId: string,
-  reason: HandoffReason,
-  orderData?: OrderData
-): Promise<void> {
+**What Customer Sees** (adapted to brand tone):
 
-  // 1. Update conversation state
-  await updateConversation(conversationId, {
-    state: ConversationState.HANDED_OFF,
-    handedOffAt: new Date(),
-    handoffReason: reason
-  });
-
-  // 2. Create order if applicable
-  let order;
-  if (orderData) {
-    order = await createOrder({
-      ...orderData,
-      conversationId,
-      status: OrderStatus.CAPTURED
-    });
-  }
-
-  // 3. Send customer notification
-  await sendMessage({
-    conversationId,
-    text: getHandoffMessage(reason, userSettings.brandTone)
-  });
-
-  // 4. Notify seller
-  await notifySeller({
-    userId: conversation.userId,
-    type: 'new_order',
-    order,
-    conversation,
-    reason
-  });
-
-  // 5. Disable AI for this conversation
-  await disableAIForConversation(conversationId);
-}
-
-function getHandoffMessage(reason: HandoffReason, tone: string): string {
-  const messages = {
-    order_confirmed: {
-      friendly: "Thanks so much! 💕 The owner will message you shortly to arrange payment and delivery!",
-      luxe: "Thank you for your order. The owner will contact you shortly to finalize the details.",
-      influencer: "Omg yay! 🎉 The owner will DM you soon to sort out payment and shipping!"
-    },
-    medical_question: {
-      friendly: "That's a great question! Let me get the owner who knows more about that 😊",
-      luxe: "I'll connect you with the owner who can better assist with your inquiry.",
-      influencer: "Good question babe! Let me get the owner to help you with that 💕"
-    },
-    custom_request: {
-      friendly: "Let me check with the owner about that special request!",
-      luxe: "I'll have the owner contact you regarding your custom request.",
-      influencer: "Ooh let me ask the owner about that!"
-    },
-    complaint: {
-      friendly: "I'm sorry to hear that! Let me get the owner right away.",
-      luxe: "My apologies. I'll have the owner reach out to you immediately.",
-      influencer: "Oh no! 😟 Let me get the owner to help you right now"
-    }
-  };
-
-  return messages[reason][tone];
-}
+**Friendly**:
+```
+"Thanks so much! 💕 The owner will message you shortly to arrange payment and delivery!"
 ```
 
-#### Seller Notification
+**Luxe**:
+```
+"Thank you for your order. The owner will contact you shortly to finalize the details."
+```
 
-**Notification Channels**:
-1. Email (always)
-2. WhatsApp (if enabled)
-3. Dashboard real-time alert
-4. Push notification (if app installed)
+**Influencer**:
+```
+"Omg yay! 🎉 The owner will DM you soon to sort out payment and shipping!"
+```
 
-**Email Template**:
-```html
-Subject: New Order Captured 🎉
+**After Handoff**:
+- No more automated responses
+- Next message is from seller (human)
+- Conversation continues naturally
+- No indication it was ever a bot (unless customer asks)
 
-Hi [Business Name],
+### Seller Notification & Alert System
+
+**Notification Content**:
+
+**Email Subject**: "New Order Captured 🎉"
+
+**Email Body**:
+```
+Hi My Beauty Shop,
 
 Great news! Your AI assistant captured a new order:
 
 ORDER DETAILS:
 ━━━━━━━━━━━━━━━━━━━
-Product: [Product Name] ([Variant])
-Quantity: [X]
-Total: $[Amount]
-Shipping: [Location]
+Product: Glow Serum (50ml)
+Quantity: 2
+Total: $110
+Shipping: Sydney, Australia
 ━━━━━━━━━━━━━━━━━━━
 
 CUSTOMER INFO:
-Name: [Customer Name from profile]
-Platform: [Instagram/Facebook]
-Profile: [Link to customer profile]
+Platform: Instagram
+Username: @customer_username
+Profile: [Link to Instagram profile]
 
 CONVERSATION SUMMARY:
-"Customer asked about pricing, showed interest, and confirmed order for delivery to [Location]."
+"Customer asked about the serum price, showed interest in the 50ml size, and confirmed order for delivery to Sydney."
 
 [View Full Conversation] [Contact Customer] [Mark Complete]
 
 Next steps:
-1. Contact the customer to arrange payment
-2. Confirm shipping details
+1. Contact the customer on Instagram to arrange payment
+2. Confirm shipping details and timeline
 3. Mark order as complete once fulfilled
 
 View in Dashboard: [Dashboard Link]
@@ -1455,827 +1199,596 @@ View in Dashboard: [Dashboard Link]
 Beauty AI Assistant
 ```
 
-**WhatsApp Template**:
+**WhatsApp Notification**:
 ```
 🎉 New Order!
 
-Product: [Name] × [Qty]
-Total: $[Amount]
-Ship to: [Location]
+Product: Glow Serum (50ml) × 2
+Total: $110
+Ship to: Sydney
 
-[View Details] [Contact]
+[View] [Contact]
 ```
 
 **Dashboard Alert**:
-- Real-time toast notification
-- Sound/vibration
-- Red badge on "Orders" tab
+- Toast notification (top-right corner)
+- Sound/vibration (if enabled)
+- Red badge on "Orders" tab showing count
+- Real-time update to orders list
 
-#### Conversation Takeover
+**Notification Timing**:
+- Email: Sent immediately (within 10 seconds)
+- WhatsApp: Sent immediately if enabled
+- Dashboard: Real-time (instant)
+- Batching: If multiple orders in 5 minutes, send summary
 
-**Takeover UI**:
+### Conversation Takeover Interface
+
+**Dashboard View**:
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Conversation with @customer_name                        │
+│  Conversation with @customer_username                     │
 │  Platform: Instagram   Status: 🤖 AI Handling            │
+├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  [💬 Full Chat History]                                  │
+│  Full Chat History:                                       │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ Customer: How much is the glow serum?             │ │
-│  │ AI Bot: The Glow Serum is $45! Want to order? 😊  │ │
-│  │ Customer: Yes, 1 please                            │ │
-│  │ AI Bot: Where should we ship it?                   │ │
-│  │ Customer: Sydney                                    │ │
-│  │ AI Bot: Perfect! Owner will message you soon! 💖   │ │
+│  │ Customer (2:14 PM)                                 │ │
+│  │ How much is the glow serum?                        │ │
+│  │                                                     │ │
+│  │ AI Bot (2:14 PM)                                   │ │
+│  │ The Glow Serum is $45! It comes in 30ml and 50ml. │ │
+│  │ Want to order? 😊                                  │ │
+│  │                                                     │ │
+│  │ Customer (2:15 PM)                                 │ │
+│  │ Yes, 50ml please                                   │ │
+│  │                                                     │ │
+│  │ AI Bot (2:15 PM)                                   │ │
+│  │ Great! How many 50ml bottles?                      │ │
+│  │                                                     │ │
+│  │ Customer (2:15 PM)                                 │ │
+│  │ 2                                                   │ │
+│  │                                                     │ │
+│  │ AI Bot (2:15 PM)                                   │ │
+│  │ Perfect! Where should we ship them?                │ │
+│  │                                                     │ │
+│  │ Customer (2:16 PM)                                 │ │
+│  │ Sydney                                              │ │
+│  │                                                     │ │
+│  │ AI Bot (2:16 PM)                                   │ │
+│  │ Let me confirm:                                     │ │
+│  │ • Glow Serum (50ml) × 2                           │ │
+│  │ • Total: $110                                      │ │
+│  │ • Shipping to: Sydney                              │ │
+│  │ Is this correct? 😊                                │ │
+│  │                                                     │ │
+│  │ Customer (2:16 PM)                                 │ │
+│  │ Yes!                                                │ │
+│  │                                                     │ │
+│  │ AI Bot (2:16 PM)                                   │ │
+│  │ Perfect! The owner will message you soon! 💖       │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
 │  [🙋 Take Over Conversation]                             │
 │                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Your message:                                            │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ Type message to customer...                        │ │
+│  │ Type your message to the customer...               │ │
+│  │                                                     │ │
 │  │                                                     │ │
 │  └────────────────────────────────────────────────────┘ │
-│  [Send]                                                   │
+│  [Send Message]                                           │
+│                                                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Takeover Function**:
-```typescript
-async function takeOverConversation(conversationId: string, sellerId: string): Promise<void> {
-  // 1. Verify seller owns this conversation
-  const conversation = await getConversation(conversationId);
-  if (conversation.userId !== sellerId) {
-    throw new Error('Unauthorized');
-  }
+**Takeover Actions**:
+1. Click "Take Over Conversation"
+2. AI immediately stops for this conversation
+3. Type message in text box
+4. Click "Send Message"
+5. Message sent directly from seller's account
+6. Conversation continues as human-to-human
 
-  // 2. Disable AI
-  await updateConversation(conversationId, {
-    aiEnabled: false,
-    takenOverBy: sellerId,
-    takenOverAt: new Date()
-  });
-
-  // 3. Optionally notify customer
-  // (Meta doesn't allow automated "human is here" messages)
-
-  // 4. Enable manual messaging in dashboard
-  return { success: true };
-}
-```
+**Quick Actions**:
+- "Contact on Instagram" - Opens Instagram DM in new tab
+- "Contact on Facebook" - Opens Messenger in new tab
+- "Copy order details" - Copies summary to clipboard
+- "Add note" - Add internal notes about customer
 
 ---
 
 ## Notification System
 
-### Requirements
+### Notification Types
 
-#### Notification Types
+**1. Order Captured** (High Priority):
+- When: AI successfully captures an order
+- Channels: Email, WhatsApp, Dashboard, Push
+- Content: Order details, customer info, conversation link
+- Action required: Contact customer for payment
 
-1. **Order Captured** (High Priority)
-2. **New Message** (Medium Priority)
-3. **Customer Waiting** (Medium Priority - no response in 1 hour)
-4. **Channel Disconnected** (High Priority)
-5. **Weekly Summary** (Low Priority)
+**2. New Message** (Medium Priority):
+- When: Customer sends message (only if not handled by AI)
+- Channels: Email (batched), Dashboard
+- Content: Message preview, customer name
+- Action: Optional - review or let AI handle
 
-#### Notification Channels
+**3. Customer Waiting** (Medium Priority):
+- When: No response to customer in 1+ hour (human takeover scenario)
+- Channels: Email, Dashboard
+- Content: Reminder with last message
+- Action: Respond to customer
 
-**Email Notifications**:
-```typescript
-interface EmailNotification {
-  to: string;
-  subject: string;
-  template: string;
-  data: any;
-  priority: 'high' | 'medium' | 'low';
-}
+**4. Channel Disconnected** (High Priority):
+- When: Instagram/Facebook connection fails
+- Channels: Email, Dashboard
+- Content: Which channel, reconnection link
+- Action required: Reconnect immediately
 
-async function sendEmailNotification(notification: EmailNotification): Promise<void> {
-  // Use SendGrid or similar
-  await emailClient.send({
-    to: notification.to,
-    from: 'notifications@beautyai.app',
-    subject: notification.subject,
-    html: renderTemplate(notification.template, notification.data),
-    priority: notification.priority
-  });
-}
+**5. Weekly Summary** (Low Priority):
+- When: Every Monday morning
+- Channels: Email only
+- Content: Orders captured, top products, engagement stats
+- Action: None - informational
+
+### Notification Preferences
+
+**User Controls**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  Notification Settings                                    │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  Email Notifications                                      │
+│  [✓] Enable email notifications                          │
+│  Email address: shop@example.com                         │
+│                                                           │
+│  Notify me about:                                         │
+│  [✓] New orders (High priority)                          │
+│  [✓] New messages (Batched every 5 minutes)              │
+│  [ ] Every single message (Not recommended)              │
+│  [✓] Channel health issues                               │
+│  [✓] Weekly summary                                      │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  WhatsApp Notifications                                   │
+│  [✓] Enable WhatsApp notifications                       │
+│  Phone number: +84 912 345 678                           │
+│                                                           │
+│  Notify me about:                                         │
+│  [✓] New orders                                          │
+│  [ ] New messages                                         │
+│  [ ] Channel issues                                       │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Quiet Hours                                              │
+│  [✓] Enable quiet hours (no notifications during)        │
+│  From: 22:00  To: 08:00  Timezone: Asia/Ho_Chi_Minh     │
+│                                                           │
+│  [Save Preferences]                                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
-**WhatsApp Notifications** (via Twilio):
-```typescript
-async function sendWhatsAppNotification(
-  phoneNumber: string,
-  message: string
-): Promise<void> {
-  await twilioClient.messages.create({
-    from: 'whatsapp:+14155238886', // Twilio sandbox
-    to: `whatsapp:${phoneNumber}`,
-    body: message
-  });
-}
+### Notification Batching
+
+**Problem**: If 50 customers message within 5 minutes, seller gets 50 emails
+
+**Solution**: Smart batching
+- High priority (orders): Always immediate, never batched
+- Medium priority (messages): Batch if multiple within 5 minutes
+- Low priority (summaries): Weekly only
+
+**Batched Notification Example**:
 ```
+Subject: 5 new customer messages
 
-**Push Notifications** (if mobile app):
-```typescript
-async function sendPushNotification(
-  userId: string,
-  notification: {
-    title: string;
-    body: string;
-    data?: any;
-  }
-): Promise<void> {
-  const userDevices = await getUserDevices(userId);
+Hi My Beauty Shop,
 
-  for (const device of userDevices) {
-    await firebaseAdmin.messaging().send({
-      token: device.fcmToken,
-      notification: {
-        title: notification.title,
-        body: notification.body
-      },
-      data: notification.data
-    });
-  }
-}
-```
+You have 5 new messages from customers:
 
-#### Notification Preferences
+1. @customer1 - "Do you have this in blue?" (2 min ago)
+2. @customer2 - "Thanks!" (3 min ago)
+3. @customer3 - "How long for shipping?" (4 min ago)
+4. @customer4 - "Is this vegan?" (4 min ago)
+5. @customer5 - "Price?" (5 min ago)
 
-```typescript
-interface NotificationPreferences {
-  userId: string;
+Note: Your AI is handling these conversations automatically.
 
-  // Channels
-  emailEnabled: boolean;
-  emailAddress: string;
-  whatsappEnabled: boolean;
-  whatsappNumber: string;
-  pushEnabled: boolean;
-
-  // Event preferences
-  newOrderEmail: boolean;
-  newOrderWhatsApp: boolean;
-  newOrderPush: boolean;
-
-  newMessageEmail: boolean;
-  newMessageWhatsApp: boolean;
-  newMessagePush: boolean;
-
-  weeklyDigestEmail: boolean;
-
-  // Quiet hours
-  quietHoursEnabled: boolean;
-  quietHoursStart: string; // "22:00"
-  quietHoursEnd: string; // "08:00"
-  quietHoursTimezone: string;
-}
-```
-
-#### Notification Batching
-
-**Problem**: Don't spam seller with 50 emails if 50 messages arrive
-
-**Solution**: Batch notifications
-```typescript
-async function scheduleNotification(
-  userId: string,
-  type: NotificationType,
-  data: any
-): Promise<void> {
-  const batchKey = `notifications:${userId}:${type}`;
-
-  // Add to batch
-  await redis.lpush(batchKey, JSON.stringify(data));
-
-  // Set expiry for batch (5 minutes)
-  const hasExpiry = await redis.ttl(batchKey);
-  if (hasExpiry === -1) {
-    await redis.expire(batchKey, 300);
-
-    // Schedule batch send in 5 minutes
-    await scheduleJob({
-      runAt: new Date(Date.now() + 300000),
-      job: 'send_batched_notifications',
-      params: { userId, type }
-    });
-  }
-}
-
-async function sendBatchedNotifications(userId: string, type: NotificationType): Promise<void> {
-  const batchKey = `notifications:${userId}:${type}`;
-  const items = await redis.lrange(batchKey, 0, -1);
-
-  if (items.length === 0) return;
-
-  // Clear batch
-  await redis.del(batchKey);
-
-  // Send single summary notification
-  if (type === 'new_message') {
-    await sendEmailNotification({
-      to: user.email,
-      subject: `${items.length} new messages waiting`,
-      template: 'batch_messages',
-      data: { count: items.length, messages: items.map(JSON.parse) }
-    });
-  }
-}
+[View All Conversations]
 ```
 
 ---
 
 ## Dashboard & Administration
 
-### Requirements
+### Dashboard Home
 
-#### Dashboard Layout
-
-**Main Navigation**:
-```
-┌─────────────────────────────────────────────────────────┐
-│  Beauty AI Assistant                  [👤 User Menu ▼]  │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  [📦 Orders]  [💬 Conversations]  [📦 Products]         │
-│  [📱 Channels]  [⚙️ Settings]                           │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-#### Orders View
-
-**Orders List**:
+**Overview Screen**:
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Orders (24)                     [📅 Filter ▼] [🔍]      │
-├──────────────────────────────────────────────────────────┤
-│  Status: [All ▼] [Captured] [In Progress] [Completed]   │
-├──────────────────────────────────────────────────────────┤
+│  Welcome back, My Beauty Shop!                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
 │                                                           │
+│  Today's Activity:                                        │
+│  ┌────────────┬────────────┬────────────┬────────────┐  │
+│  │  Messages  │   Orders   │ AI Handled │  Response  │  │
+│  │    145     │     12     │    98%     │   <2 sec   │  │
+│  └────────────┴────────────┴────────────┴────────────┘  │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Recent Orders (3 pending)              [View All →]     │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ 🆕 Glow Serum × 1                        $45.00   │ │
-│  │    @customer_name via Instagram                    │ │
-│  │    Sydney • 2 minutes ago                          │ │
-│  │    [View] [Contact] [Mark Complete]                │ │
+│  │ 🆕 @customer1 • Glow Serum × 1 • $45 • Sydney     │ │
+│  │    2 minutes ago • [Contact] [View]                │ │
+│  └────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ 🆕 @customer2 • Hydra Cream × 2 • $110 • Melbourne│ │
+│  │    15 minutes ago • [Contact] [View]               │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  Active Conversations (4)               [View All →]     │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ ⏳ Hydra Cream × 2                       $110.00  │ │
-│  │    @another_customer via Facebook                  │ │
-│  │    Melbourne • 1 hour ago                          │ │
-│  │    [View] [Contact] [Mark Complete]                │ │
+│  │ 🤖 @customer3 asking about product ingredients     │ │
+│  │    AI handling • [View] [Take Over]                │ │
 │  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                           │
+│  System Health:                                           │
+│  ✅ Instagram: Active (145 msgs today)                   │
+│  ✅ Facebook: Active (89 msgs today)                     │
+│  ✅ AI Assistant: Running smoothly                       │
 │                                                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Order Detail View**:
-```
-┌──────────────────────────────────────────────────────────┐
-│  ← Back to Orders                                        │
-├──────────────────────────────────────────────────────────┤
-│  Order #12345                          Status: Captured  │
-│                                                           │
-│  CUSTOMER                                                 │
-│  @customer_name                                          │
-│  Platform: Instagram                                      │
-│  [📱 Contact on Instagram]                               │
-│                                                           │
-│  ORDER DETAILS                                            │
-│  Product: Glow Serum (30ml)                              │
-│  Quantity: 1                                              │
-│  Price: $45.00                                            │
-│  Shipping: Sydney, Australia                              │
-│                                                           │
-│  CONVERSATION HISTORY                                     │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │ [Full conversation transcript here]                │ │
-│  │                                                     │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                           │
-│  ACTIONS                                                  │
-│  [Mark as In Progress] [Mark as Complete] [Cancel]       │
-│                                                           │
-│  NOTES                                                    │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │ Add notes (payment method, tracking number, etc.)  │ │
-│  └────────────────────────────────────────────────────┘ │
-│  [Save Notes]                                             │
-└──────────────────────────────────────────────────────────┘
-```
+### Orders Management
 
-#### Conversations View
+(Already covered in detail above - see Order Detail View in Handoff section)
 
-**Active Conversations**:
+**Key Features**:
+- List all orders with filters (status, date, platform)
+- Search by customer name or product
+- Sort by date, amount, status
+- Bulk actions (mark multiple as complete)
+- Export to CSV for accounting
+
+**Order Statuses**:
+- **Captured**: New order, awaiting seller action
+- **In Progress**: Seller contacted customer
+- **Completed**: Order fulfilled
+- **Cancelled**: Order cancelled by seller or customer
+
+### Conversations Management
+
+**Active Conversations View**:
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  Conversations (8 active)                                │
+│  [All] [AI Handling] [Human Taken Over] [Ended]         │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │ 🤖 @customer_name                    2 min ago     │ │
-│  │    "Where should we ship it?"                      │ │
+│  │    Instagram • AI: "Where should we ship it?"      │ │
 │  │    [View Conversation] [Take Over]                 │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │ 👤 @another_customer                 1 hour ago    │ │
-│  │    "Thanks, I'll send payment now"                 │ │
+│  │    Facebook • You: "I'll send tracking tomorrow"   │ │
 │  │    [View Conversation] [Reply]                     │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
-└──────────────────────────────────────────────────────────┘
-```
-
-#### Products View
-(Already covered in Product Management section)
-
-#### Channels View
-
-**Connected Channels**:
-```
-┌──────────────────────────────────────────────────────────┐
-│  Channels (2 connected)              [+ Connect Channel] │
-├──────────────────────────────────────────────────────────┤
-│                                                           │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │ Instagram                                          │ │
-│  │ @my_beauty_shop                                    │ │
-│  │ ✅ Active • 145 messages today                     │ │
-│  │ [View Stats] [Disconnect]                          │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                           │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │ Facebook Page                                      │ │
-│  │ My Beauty Shop                                     │ │
-│  │ ✅ Active • 89 messages today                      │ │
-│  │ [View Stats] [Disconnect]                          │ │
+│  │ 🤖 @user123                          5 min ago     │ │
+│  │    Instagram • AI answering product questions      │ │
+│  │    [View Conversation] [Take Over]                 │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### Settings View
+**Indicators**:
+- 🤖 = AI currently handling
+- 👤 = Human (seller) taken over
+- ⏸️ = Conversation ended (no activity 24h+)
+- 🆕 = New conversation (first message)
 
-**Sections**:
-1. **Business Settings**
-   - Business name
-   - Timezone
-   - Currency
+**Filters**:
+- All conversations
+- AI handling only
+- Human taken over only
+- Ended conversations
+- By platform (Instagram/Facebook)
+- By date range
 
-2. **AI Assistant Settings**
-   - Brand tone
-   - Auto-handoff triggers
-   - Response speed
-   - Operating hours
+### Settings & Configuration
 
-3. **Notification Settings**
-   - Email preferences
-   - WhatsApp preferences
-   - Quiet hours
+**Settings Sections**:
 
-4. **Account Settings**
-   - Email & password
-   - Subscription status
-   - Billing information
+**1. Business Settings**:
+- Business name, type, products category
+- Timezone, currency
+- Edit anytime
 
-5. **Danger Zone**
-   - Export data
-   - Delete account
+**2. AI Assistant Settings**:
+- Brand tone (Friendly/Luxe/Influencer) with previews
+- Auto-handoff triggers (checkboxes)
+- Response speed (Instant/Delayed)
+- Operating hours (24/7 or custom schedule)
+
+**3. Notification Settings**:
+(Already detailed above in Notification Preferences)
+
+**4. Account & Billing**:
+- Email and password change
+- Subscription status and renewal date
+- Payment method
+- Billing history
+- Upgrade/downgrade plan
+- Cancel subscription
+
+**5. Data & Privacy**:
+- Export all data (orders, conversations, products) as CSV
+- Data retention settings
+- Delete account (with confirmation)
 
 ---
 
-## Data Models
+## Data & Information Architecture
 
-### Complete Schema
+### Core Data Entities
 
-```sql
--- Users
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  business_name VARCHAR(255) NOT NULL,
-  timezone VARCHAR(100) DEFAULT 'UTC',
-  currency VARCHAR(3) DEFAULT 'USD',
-  brand_tone VARCHAR(20) DEFAULT 'friendly',
-  subscription_status VARCHAR(20) DEFAULT 'trial',
-  subscription_expires_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  last_login_at TIMESTAMP,
-  deleted_at TIMESTAMP
-);
+**User/Seller**:
+- Account information (email, password)
+- Business profile (name, type, settings)
+- Subscription details (status, expiry)
+- Notification preferences
 
--- Notification Preferences
-CREATE TABLE notification_preferences (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  email_enabled BOOLEAN DEFAULT TRUE,
-  email_address VARCHAR(255),
-  whatsapp_enabled BOOLEAN DEFAULT FALSE,
-  whatsapp_number VARCHAR(20),
-  new_order_email BOOLEAN DEFAULT TRUE,
-  new_order_whatsapp BOOLEAN DEFAULT FALSE,
-  weekly_digest_email BOOLEAN DEFAULT TRUE,
-  quiet_hours_enabled BOOLEAN DEFAULT FALSE,
-  quiet_hours_start TIME,
-  quiet_hours_end TIME,
-  quiet_hours_timezone VARCHAR(100)
-);
+**Product**:
+- Basic info (name, price, description, image)
+- Variants (type, name, price modifier, availability)
+- Availability status
+- Creation and update timestamps
 
--- Products
-CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  price DECIMAL(10,2) NOT NULL,
-  currency VARCHAR(3) NOT NULL,
-  image_url TEXT,
-  is_available BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
+**Channel**:
+- Platform type (Instagram/Facebook)
+- Account details (ID, username, name)
+- Connection status (active/inactive)
+- Access credentials (encrypted)
+- Last activity timestamp
 
-CREATE INDEX idx_products_user_id ON products(user_id);
+**Conversation**:
+- Customer identifier
+- Channel reference
+- Current state (browsing, collecting, handed off)
+- AI enabled/disabled
+- Conversation history
+- Timestamps (created, updated, handed off)
 
--- Product Variants
-CREATE TABLE product_variants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  type VARCHAR(50) NOT NULL, -- size, shade, scent, custom
-  name VARCHAR(100) NOT NULL, -- 30ml, Medium, Rose
-  price_modifier DECIMAL(10,2) DEFAULT 0,
-  is_available BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+**Message**:
+- Sender (customer/AI/seller)
+- Message text
+- Detected intent
+- Extracted entities (products, quantities, etc.)
+- Timestamp
 
-CREATE INDEX idx_variants_product_id ON product_variants(product_id);
+**Order**:
+- Customer details
+- Product snapshot (name, price at time of order)
+- Variant snapshot (if applicable)
+- Quantity and total price
+- Shipping location
+- Status (captured, in progress, completed, cancelled)
+- Conversation reference
+- Seller notes
+- Timestamps (captured, handed off, completed)
 
--- Channels
-CREATE TABLE channels (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  platform VARCHAR(50) NOT NULL, -- facebook, instagram
-  platform_account_id VARCHAR(255) NOT NULL,
-  platform_account_name VARCHAR(255),
-  platform_account_username VARCHAR(255),
-  access_token TEXT NOT NULL, -- encrypted
-  token_expires_at TIMESTAMP,
-  webhook_verified BOOLEAN DEFAULT FALSE,
-  is_active BOOLEAN DEFAULT TRUE,
-  last_message_at TIMESTAMP,
-  connected_at TIMESTAMP DEFAULT NOW(),
-  disconnected_at TIMESTAMP,
-  metadata JSONB
-);
+### Data Relationships
 
-CREATE INDEX idx_channels_user_id ON channels(user_id);
-CREATE INDEX idx_channels_platform_account ON channels(platform, platform_account_id);
+```
+User (Seller)
+  ├── has many → Channels
+  ├── has many → Products
+  │   └── has many → Product Variants
+  ├── has many → Conversations
+  │   └── has many → Messages
+  └── has many → Orders
+      └── belongs to → Conversation
+      └── references → Product
+      └── references → Product Variant
+```
 
--- Conversations
-CREATE TABLE conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
-  customer_id VARCHAR(255) NOT NULL, -- Platform sender ID
-  customer_name VARCHAR(255),
-  state VARCHAR(50) DEFAULT 'browsing',
-  ai_enabled BOOLEAN DEFAULT TRUE,
-  has_buying_intent BOOLEAN DEFAULT FALSE,
-  handoff_reason VARCHAR(100),
-  taken_over_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  handed_off_at TIMESTAMP,
-  taken_over_at TIMESTAMP
-);
+### Data Retention
 
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_channel_customer ON conversations(channel_id, customer_id);
+**Active Data** (user has active subscription):
+- All data retained indefinitely
+- Conversations: Full history
+- Orders: Full history
+- Messages: Full history
 
--- Messages
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-  platform_message_id VARCHAR(255),
-  sender_type VARCHAR(20) NOT NULL, -- customer, ai, seller
-  sender_id VARCHAR(255),
-  text TEXT,
-  intent VARCHAR(50),
-  entities JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+**Cancelled/Suspended Account**:
+- Retain for 30 days
+- Read-only access for export
+- After 30 days: Permanent deletion
 
-CREATE INDEX idx_messages_conversation ON messages(conversation_id, created_at);
+**Conversation History**:
+- Active conversations: 24 hours context
+- Archived conversations: 90 days retention
+- After 90 days: Summarized only (not full messages)
 
--- Orders
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-  channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
-  customer_id VARCHAR(255) NOT NULL,
-  customer_name VARCHAR(255),
+**Order History**:
+- Retained indefinitely (for accounting)
+- Can export anytime
 
-  -- Product details (snapshot)
-  product_id UUID REFERENCES products(id),
-  product_name VARCHAR(255) NOT NULL,
-  variant_id UUID REFERENCES product_variants(id),
-  variant_name VARCHAR(100),
+### Data Export
 
-  -- Order details
-  quantity INTEGER NOT NULL,
-  price_per_unit DECIMAL(10,2) NOT NULL,
-  total_price DECIMAL(10,2) NOT NULL,
-  currency VARCHAR(3) NOT NULL,
+**What Users Can Export**:
+- All products (CSV)
+- All orders with conversation summaries (CSV)
+- All conversation transcripts (JSON/CSV)
+- Customer contact information (CSV)
 
-  -- Shipping
-  shipping_location TEXT NOT NULL,
-
-  -- Status
-  status VARCHAR(50) DEFAULT 'captured',
-  seller_notes TEXT,
-
-  -- Timestamps
-  captured_at TIMESTAMP DEFAULT NOW(),
-  handed_off_at TIMESTAMP,
-  completed_at TIMESTAMP,
-  cancelled_at TIMESTAMP
-);
-
-CREATE INDEX idx_orders_user_id ON orders(user_id, captured_at DESC);
-CREATE INDEX idx_orders_status ON orders(status);
-
--- Conversation Context (Redis-backed, but also in DB for persistence)
-CREATE TABLE conversation_contexts (
-  conversation_id UUID PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
-  extracted_data JSONB, -- { productId, variantId, quantity, shippingLocation }
-  context_data JSONB, -- Additional context
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+**Export Format Example** (Orders CSV):
+```
+Order ID, Date, Customer, Platform, Product, Variant, Quantity, Price, Total, Shipping, Status
+ORD001, 2026-01-11 14:23, @customer1, Instagram, Glow Serum, 50ml, 2, 55, 110, Sydney, Captured
+ORD002, 2026-01-11 15:45, @customer2, Facebook, Hydra Cream, , 1, 55, 55, Melbourne, Completed
 ```
 
 ---
 
-## API Specifications
+## Safety, Compliance & Trust
 
-### REST API Endpoints
+### Safety Guardrails
 
-#### Authentication
+**Beauty Industry Compliance**:
+- No medical claims whatsoever
+- No guarantee of results
+- No diagnosis or treatment advice
+- Ingredient information only (factual)
+- Age-appropriate language
 
-```
-POST /api/auth/signup
-POST /api/auth/login
-POST /api/auth/logout
-POST /api/auth/forgot-password
-POST /api/auth/reset-password
-GET  /api/auth/verify-email?token=xxx
-```
+**Example Guardrails in Action**:
 
-#### User Management
+❌ **Not Allowed**:
+- "This will cure your acne"
+- "Guaranteed to remove wrinkles"
+- "Treats eczema"
+- "FDA approved for skin conditions"
+- "You should use this for your rash"
 
-```
-GET    /api/users/me
-PATCH  /api/users/me
-DELETE /api/users/me
-GET    /api/users/me/subscription
-POST   /api/users/me/subscription/upgrade
-```
+✅ **Allowed**:
+- "Contains vitamin C, which is known for brightening"
+- "This serum has hyaluronic acid for hydration"
+- "Popular for daily skincare routines"
+- "Let me connect you with the owner for specific skin questions"
 
-#### Products
-
-```
-GET    /api/products
-POST   /api/products
-GET    /api/products/:id
-PATCH  /api/products/:id
-DELETE /api/products/:id
-POST   /api/products/import-csv
-GET    /api/products/:id/variants
-POST   /api/products/:id/variants
-PATCH  /api/products/variants/:id
-DELETE /api/products/variants/:id
-```
-
-#### Channels
-
-```
-GET    /api/channels
-POST   /api/channels/connect/facebook
-POST   /api/channels/connect/instagram
-GET    /api/channels/:id
-DELETE /api/channels/:id
-GET    /api/channels/:id/stats
-```
-
-#### Conversations
-
-```
-GET    /api/conversations
-GET    /api/conversations/:id
-POST   /api/conversations/:id/takeover
-POST   /api/conversations/:id/messages
-GET    /api/conversations/:id/messages
-```
-
-#### Orders
-
-```
-GET    /api/orders
-GET    /api/orders/:id
-PATCH  /api/orders/:id/status
-POST   /api/orders/:id/notes
-```
-
-#### Webhooks
-
-```
-GET    /api/webhooks/meta (verification)
-POST   /api/webhooks/meta (incoming messages)
-```
-
-### Example API Request/Response
-
-**Create Product**:
-```http
-POST /api/products
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "Glow Serum",
-  "description": "Brightening vitamin C serum",
-  "price": 45.00,
-  "currency": "USD",
-  "variants": [
-    { "type": "size", "name": "30ml", "priceModifier": 0 },
-    { "type": "size", "name": "50ml", "priceModifier": 10 }
-  ],
-  "isAvailable": true
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "userId": "...",
-    "name": "Glow Serum",
-    "description": "Brightening vitamin C serum",
-    "price": 45.00,
-    "currency": "USD",
-    "variants": [
-      {
-        "id": "...",
-        "type": "size",
-        "name": "30ml",
-        "priceModifier": 0
-      },
-      {
-        "id": "...",
-        "type": "size",
-        "name": "50ml",
-        "priceModifier": 10
-      }
-    ],
-    "isAvailable": true,
-    "createdAt": "2026-01-11T10:00:00Z"
-  }
-}
-```
-
----
-
-## Security & Compliance
-
-### Security Requirements
-
-#### Authentication & Authorization
-
-**JWT Tokens**:
-- Access token: 1 hour expiry
-- Refresh token: 30 days expiry
-- Secure httpOnly cookies for refresh tokens
-
-**Password Requirements**:
-- Minimum 8 characters
-- At least 1 uppercase, 1 lowercase, 1 number
-- Bcrypt hashing with cost factor 12
-
-**API Rate Limiting**:
-- 100 requests per minute per user
-- 1000 requests per hour per user
-- 10 signup attempts per hour per IP
-
-#### Data Encryption
-
-**At Rest**:
-- Database encryption (AWS RDS encryption)
-- Encrypted access tokens (AES-256)
-- Encrypted sensitive fields (phone numbers, tokens)
-
-**In Transit**:
-- HTTPS only (TLS 1.3)
-- HSTS headers
-- Certificate pinning for API clients
-
-#### Input Validation
-
-**All API Inputs**:
-- Sanitize HTML/script tags
-- Validate data types
-- Length limits on all strings
-- SQL injection prevention (parameterized queries)
-- XSS prevention (escape output)
-
-### Compliance Requirements
-
-#### Data Privacy (GDPR, CCPA)
-
-**User Rights**:
-- Right to access data (export feature)
-- Right to delete data (account deletion)
-- Right to portability (CSV export)
-
-**Data Retention**:
-- Active users: Retain indefinitely
-- Cancelled users: Retain 30 days, then delete
-- Conversation history: Retain 90 days
-
-**Cookie Consent**:
-- Banner on first visit
-- Essential cookies only without consent
-- Analytics opt-in required
-
-#### Platform Compliance
+### Platform Compliance
 
 **Meta Platform Policies**:
 - 24-hour messaging window enforcement
-- No spam/bulk messaging
-- Proper webhook security
-- Respect user blocking/reporting
+- No unsolicited messages
+- Respect user blocks/reports
+- Clear that it's an automated assistant
+- No spam or bulk messaging
+- Privacy policy visible to customers
 
-**Beauty Industry Compliance**:
-- No medical claims
-- Ingredient safety (no banned substances)
-- Age restrictions (cosmetics 13+, some 18+)
-- Country-specific regulations
+**Disclosure Requirements**:
+- Landing page: "We use AI to respond to messages"
+- Terms of service link
+- Privacy policy link
+- Contact information for support
 
-#### PCI Compliance
+### Data Privacy (GDPR/CCPA)
 
-**Payment Handling**:
-- ⚠️ **NEVER** store credit card numbers
-- ⚠️ **NEVER** process payments directly
-- Seller handles payment outside platform
-- No payment data in database
+**User Rights**:
+- Right to access: Export all data anytime
+- Right to delete: Account deletion with 30-day window
+- Right to portability: CSV/JSON export
+- Right to be forgotten: Full deletion after 30 days
+
+**Data Protection**:
+- All data encrypted at rest
+- Secure transmission (HTTPS)
+- No selling of customer data
+- No sharing with third parties (except Meta for platform functionality)
+- Clear privacy policy
+
+**Cookie Consent**:
+- Banner on first visit
+- Essential cookies only (authentication)
+- Analytics opt-in required
+- Preferences saved
+
+### Security Measures
+
+**Authentication**:
+- Password requirements: 8+ chars, mixed case, number
+- Email verification required
+- Optional: Two-factor authentication
+- Session timeout after 7 days
+
+**Access Control**:
+- Sellers can only access their own data
+- Customers identified by platform ID
+- No cross-contamination between shops
+
+**Payment Security**:
+- ⚠️ **Critical**: We NEVER handle payments
+- No credit card information ever stored
+- No payment processing on platform
+- Seller handles payment externally (bank transfer, PayPal, etc.)
+
+### Trust & Transparency
+
+**To Customers**:
+- AI identifies as assistant, not human
+- Clear handoff: "The owner will message you"
+- Conversation history visible to them
+- Can request human anytime
+
+**To Sellers**:
+- Full transparency on AI actions
+- All conversations logged
+- Can review AI responses anytime
+- Can take over any conversation
+- Can provide feedback on AI behavior
+
+**Customer Support**:
+- Help documentation for sellers
+- Email support for issues
+- Community forum (future)
+- Response time: 24 hours for support tickets
 
 ---
 
-## Next Steps
+## Success Metrics & KPIs
 
-### MVP Development Roadmap
+### Product Success Indicators
 
-**Phase 1: Foundation (Weeks 1-2)**
-- [ ] User authentication & onboarding
-- [ ] Product management CRUD
-- [ ] Basic dashboard UI
+**Onboarding Success**:
+- % of users completing setup (target: 80%+)
+- Time to first order captured (target: <24 hours after setup)
+- Drop-off points in onboarding flow
 
-**Phase 2: Integration (Weeks 3-4)**
-- [ ] Meta OAuth & webhooks
-- [ ] Channel connection flow
-- [ ] Message sending/receiving
+**Core Product Performance**:
+- Order capture rate: % of buying intents that become captured orders
+- AI handle rate: % of conversations handled without human intervention
+- Average response time: Speed of AI responses (target: <2 seconds)
+- Channel uptime: % time channels are active and connected
 
-**Phase 3: AI Engine (Weeks 5-6)**
-- [ ] LLM integration (OpenAI/Claude)
-- [ ] Intent detection
-- [ ] Response generation
-- [ ] Conversation state management
+**User Engagement**:
+- Daily active sellers (checking dashboard)
+- Orders per seller per week
+- Conversion rate: trial to paid
+- Retention rate: 7-day, 30-day
 
-**Phase 4: Order Capture (Weeks 7-8)**
-- [ ] Buying intent detection
-- [ ] One-at-a-time collection flow
-- [ ] Order confirmation
-- [ ] Order storage
+**Customer (End-User) Experience**:
+- Conversation completion rate: % of started conversations that reach resolution
+- Average conversation length: Number of messages to capture order
+- Handoff rate: % of conversations requiring human intervention
+- Time to seller response after handoff
 
-**Phase 5: Handoff & Notifications (Week 9)**
-- [ ] Human handoff logic
-- [ ] Email notifications
-- [ ] WhatsApp notifications
-- [ ] Dashboard alerts
+### North Star Metric
 
-**Phase 6: Testing & Launch (Week 10)**
-- [ ] End-to-end testing
-- [ ] Beta user testing
-- [ ] Performance optimization
-- [ ] Production deployment
+**Orders Captured per Day** (across all sellers)
+- Measures core value: AI capturing orders automatically
+- Target MVP: 50+ orders/day across 100 sellers = 0.5 orders per seller per day
+- Target Year 1: 1000+ orders/day across 1000 sellers = 1 order per seller per day
 
 ---
 
 **Document Status**: Draft v1.0
 **Last Updated**: 2026-01-11
-**Next Review**: After technical architecture review
+**Next Steps**: Review with team, validate user flows with testing, begin MVP development
 **Owner**: Product Team
